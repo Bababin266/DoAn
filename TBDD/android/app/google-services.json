@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "673742064314",
+    "project_id": "tbdd-8af55",
+    "storage_bucket": "tbdd-8af55.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:673742064314:android:bd42f429bb00169db3d083",
+        "android_client_info": {
+          "package_name": "com.example.tbdd"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAJJlDWjIFytzR_UFCjxFAMvTvPVodY_Q8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
