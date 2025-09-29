@@ -6,22 +6,14 @@ class AuthService {
   User? getCurrentUser() => _auth.currentUser;
 
   Future<User?> signIn(String email, String password) async {
-    final userCred = await _auth.signInWithEmailAndPassword(
-      email: email,
-      password: password,
-    );
-    return userCred.user;
+    final res = await _auth.signInWithEmailAndPassword(email: email, password: password);
+    return res.user;
   }
 
   Future<User?> signUp(String email, String password) async {
-    final userCred = await _auth.createUserWithEmailAndPassword(
-      email: email,
-      password: password,
-    );
-    return userCred.user;
+    final res = await _auth.createUserWithEmailAndPassword(email: email, password: password);
+    return res.user;
   }
 
-  Future<void> logout() async {
-    await _auth.signOut();
-  }
+  Future<void> logout() async => _auth.signOut();
 }

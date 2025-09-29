@@ -6,16 +6,15 @@ class MedicineService {
   final _db = FirebaseFirestore.instance;
   final _auth = FirebaseAuth.instance;
 
-  CollectionReference<Map<String, dynamic>> get _meds =>
-      _db.collection('medicines');
+  CollectionReference<Map<String, dynamic>> get _meds => _db.collection('medicines');
 
-  /// ⬅️ TRẢ VỀ id tài liệu mới tạo để dùng làm notificationId
+  // ➜ trả về docId để dùng làm gốc id notification
   Future<String> addMedicine(Medicine med) async {
     final uid = _auth.currentUser?.uid;
     if (uid == null) throw 'Chưa đăng nhập';
 
     final data = med.toMap()
-      ..['ownerId'] = uid
+      ..['ownerId']  = uid
       ..['createdAt'] = FieldValue.serverTimestamp();
 
     final doc = await _meds.add(data);
@@ -40,7 +39,7 @@ class MedicineService {
     if (uid == null) throw 'Chưa đăng nhập';
     if (med.id == null) throw 'Thiếu id';
 
-    final data = med.toMap()..remove('ownerId'); // không cho đổi owner
+    final data = med.toMap()..remove('ownerId');
     await _meds.doc(med.id!).update(data);
   }
 

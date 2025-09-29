@@ -21,7 +21,7 @@ class Medicine {
     this.createdAt,
   });
 
-  // ĐÃ CÓ: fromSnapshot(...) nếu bạn dùng
+  // ĐÃ CÓ: fromSnapshot(...)
   factory Medicine.fromSnapshot(QueryDocumentSnapshot doc) {
     final data = (doc.data() as Map<String, dynamic>? ?? {});
     return Medicine.fromMap(data, id: doc.id);
