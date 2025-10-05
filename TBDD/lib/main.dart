@@ -7,21 +7,24 @@ import 'firebase_options.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
 import 'screens/home_screen.dart';
+import 'screens/take_medicine_screen.dart'; // ⬅️ Màn xác nhận đã uống
 
 // Services
 import 'services/auth_service.dart';
-import 'services/notification_service.dart'; // ⬅️ THÊM
+import 'services/notification_service.dart';
+
+// ⬅️ Key để điều hướng khi bấm thông báo
+final GlobalKey<NavigatorState> _navKey = GlobalKey<NavigatorState>();
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Firebase
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  // 🔔 Khởi tạo notification + xin quyền (Android 13+)
-  await NotificationService.instance.init();
+  // 🔔 Khởi tạo notifications + truyền navigatorKey để handle click noti
+  await NotificationService.instance.init(navigatorKey: _navKey);
 
   runApp(const MedicineApp());
 }
@@ -36,6 +39,9 @@ class MedicineApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(primarySwatch: Colors.teal),
 
+      // ⬅️ GẮN navigatorKey để NotificationService có thể push route
+      navigatorKey: _navKey,
+
       // Màn hình đầu tiên
       initialRoute: AuthService().getCurrentUser() == null ? '/login' : '/home',
 
@@ -44,6 +50,7 @@ class MedicineApp extends StatelessWidget {
         '/login': (context) => const LoginScreen(),
         '/register': (context) => const RegisterScreen(),
         '/home': (context) => const HomeScreen(),
+        '/take': (context) => const TakeMedicineScreen(), // ⬅️ khi bấm thông báo sẽ mở route này
       },
     );
   }

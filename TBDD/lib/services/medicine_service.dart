@@ -6,15 +6,16 @@ class MedicineService {
   final _db = FirebaseFirestore.instance;
   final _auth = FirebaseAuth.instance;
 
-  CollectionReference<Map<String, dynamic>> get _meds => _db.collection('medicines');
+  CollectionReference<Map<String, dynamic>> get _meds =>
+      _db.collection('medicines');
 
-  // ➜ trả về docId để dùng làm gốc id notification
+  /// Tạo mới và trả về docId (để làm gốc id notification)
   Future<String> addMedicine(Medicine med) async {
     final uid = _auth.currentUser?.uid;
     if (uid == null) throw 'Chưa đăng nhập';
 
     final data = med.toMap()
-      ..['ownerId']  = uid
+      ..['ownerId'] = uid
       ..['createdAt'] = FieldValue.serverTimestamp();
 
     final doc = await _meds.add(data);
@@ -44,4 +45,16 @@ class MedicineService {
   }
 
   Future<void> deleteMedicine(String id) => _meds.doc(id).delete();
+
+  /// ✅ Lấy một thuốc theo id
+  Future<Medicine?> getMedicineById(String id) async {
+    final doc = await _meds.doc(id).get();
+    if (!doc.exists) return null;
+    return Medicine.fromMap(doc.data()!, id: doc.id);
+  }
+
+  /// ✅ Đánh dấu đã uống / bỏ đánh dấu
+  Future<void> setTaken(String id, bool value) async {
+    await _meds.doc(id).update({'taken': value});
+  }
 }

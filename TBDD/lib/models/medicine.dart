@@ -4,10 +4,10 @@ class Medicine {
   final String? id;
   final String name;
   final String dosage;
-  final String time;
-  final String type;
-  final String frequency;
-  final bool taken;
+  final String time;       // "HH:mm"
+  final String type;       // ví dụ: Viên nén
+  final String frequency;  // ví dụ: Hàng ngày
+  final bool taken;        // ✅ đã uống hay chưa (đơn giản)
   final Timestamp? createdAt;
 
   const Medicine({
@@ -21,13 +21,11 @@ class Medicine {
     this.createdAt,
   });
 
-  // ĐÃ CÓ: fromSnapshot(...)
   factory Medicine.fromSnapshot(QueryDocumentSnapshot doc) {
     final data = (doc.data() as Map<String, dynamic>? ?? {});
     return Medicine.fromMap(data, id: doc.id);
   }
 
-  // ✅ THÊM: fromMap để dùng cho service.map(...)
   factory Medicine.fromMap(Map<String, dynamic> data, {String? id}) {
     return Medicine(
       id: id,
@@ -50,4 +48,26 @@ class Medicine {
     'taken': taken,
     'createdAt': createdAt ?? FieldValue.serverTimestamp(),
   };
+
+  Medicine copyWith({
+    String? id,
+    String? name,
+    String? dosage,
+    String? time,
+    String? type,
+    String? frequency,
+    bool? taken,
+    Timestamp? createdAt,
+  }) {
+    return Medicine(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      dosage: dosage ?? this.dosage,
+      time: time ?? this.time,
+      type: type ?? this.type,
+      frequency: frequency ?? this.frequency,
+      taken: taken ?? this.taken,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
 }

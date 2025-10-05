@@ -1,4 +1,3 @@
-// lib/screens/home_screen.dart
 import 'dart:async';
 import 'dart:math' show min;
 import 'package:flutter/material.dart';
@@ -8,6 +7,8 @@ import '../services/auth_service.dart';
 import '../services/medicine_service.dart';
 import '../services/notification_service.dart';
 import 'add_medicine_screen.dart';
+
+enum MedFilter { all, notTaken, taken } // ✅ bộ lọc
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -30,19 +31,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   String _searchQuery = '';
   Timer? _debounce;
 
-  // 🌐 Ngôn ngữ cục bộ cho HomeScreen
-  bool _isVietnamese = true; // mặc định: Tiếng Việt
-
-  // Helper chọn text theo ngôn ngữ
+  // 🌐 toggle ngôn ngữ
+  bool _isVietnamese = true;
   String t(String vi, String en) => _isVietnamese ? vi : en;
+
+  // ✅ trạng thái lọc
+  MedFilter _filter = MedFilter.all;
 
   @override
   void initState() {
     super.initState();
-    _animationController = AnimationController(
-      duration: const Duration(milliseconds: 800),
-      vsync: this,
-    );
+    _animationController =
+        AnimationController(duration: const Duration(milliseconds: 800), vsync: this);
     _fadeAnimation = CurvedAnimation(parent: _animationController, curve: Curves.easeInOut);
     _animationController.forward();
   }
@@ -59,10 +59,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   void _toggleLanguage() {
     setState(() => _isVietnamese = !_isVietnamese);
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(t('Đã chuyển sang Tiếng Việt', 'Switched to English')),
-        duration: const Duration(seconds: 1),
-      ),
+      SnackBar(content: Text(t('Đã chuyển sang Tiếng Việt', 'Switched to English'))),
     );
   }
 
@@ -75,13 +72,27 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   List<Medicine> _filterMedicines(List<Medicine> medicines) {
-    if (_searchQuery.isEmpty) return medicines;
-    final q = _searchQuery.toLowerCase();
-    return medicines.where((m) =>
-    m.name.toLowerCase().contains(q) ||
-        m.dosage.toLowerCase().contains(q) ||
-        m.time.toLowerCase().contains(q)
-    ).toList();
+    // filter theo từ khoá
+    List<Medicine> list = medicines;
+    if (_searchQuery.isNotEmpty) {
+      final q = _searchQuery.toLowerCase();
+      list = list
+          .where((m) =>
+      m.name.toLowerCase().contains(q) ||
+          m.dosage.toLowerCase().contains(q) ||
+          m.time.toLowerCase().contains(q))
+          .toList();
+    }
+    // filter theo trạng thái
+    switch (_filter) {
+      case MedFilter.notTaken:
+        return list.where((m) => !m.taken).toList();
+      case MedFilter.taken:
+        return list.where((m) => m.taken).toList();
+      case MedFilter.all:
+      default:
+        return list;
+    }
   }
 
   Future<bool> _confirmDelete(Medicine medicine) async {
@@ -98,21 +109,22 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         ),
         content: Text(t(
             "Bạn có chắc chắn muốn xóa '${medicine.name}' không?",
-            "Are you sure you want to delete '${medicine.name}'?"
-        )),
+            "Are you sure you want to delete '${medicine.name}'?")),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
             child: Text(t('Hủy', 'Cancel')),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red, foregroundColor: Colors.white),
             onPressed: () => Navigator.of(ctx).pop(true),
             child: Text(t('Xóa', 'Delete')),
           ),
         ],
       ),
-    ) ?? false;
+    ) ??
+        false;
   }
 
   Future<void> _deleteMedicine(Medicine medicine) async {
@@ -120,34 +132,27 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     if (id == null) return;
     try {
       await service.deleteMedicine(id);
-      // Hủy thông báo nếu bạn dùng docId.hashCode làm notification id
       await NotificationService.instance.cancel(id.hashCode);
-
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(t("Đã xóa '${medicine.name}'", "Deleted '${medicine.name}'")))
+        SnackBar(content: Text(t("Đã xóa '${medicine.name}'", "Deleted '${medicine.name}'"))),
       );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(t("Không thể xóa: $e", "Cannot delete: $e")),
-          backgroundColor: Colors.red,
-        ),
+        SnackBar(content: Text(t("Không thể xóa: $e", "Cannot delete: $e")),
+            backgroundColor: Colors.red),
       );
     }
   }
 
   Future<void> _openAdd() async {
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const AddMedicineScreen()),
-    );
+    final result =
+    await Navigator.push(context, MaterialPageRoute(builder: (_) => const AddMedicineScreen()));
     if (!mounted) return;
     if (result == 'added') {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(t('Lưu thành công', 'Saved successfully'))),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(t('Lưu thành công', 'Saved successfully'))));
     }
   }
 
@@ -157,20 +162,20 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
         title: Text(t('Đăng xuất', 'Logout')),
-        content: Text(t('Bạn có chắc chắn muốn đăng xuất?', 'Are you sure you want to log out?')),
+        content: Text(
+            t('Bạn có chắc chắn muốn đăng xuất?', 'Are you sure you want to log out?')),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text(t('Hủy', 'Cancel')),
-          ),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: Text(t('Hủy', 'Cancel'))),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red, foregroundColor: Colors.white),
             onPressed: () => Navigator.of(ctx).pop(true),
             child: Text(t('Đăng xuất', 'Logout')),
           ),
         ],
       ),
-    ) ?? false;
+    ) ??
+        false;
 
     if (ok) {
       await _authService.logout();
@@ -179,7 +184,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     }
   }
 
-  // Bảng test notification
   void _openNotiTester() {
     showModalBottomSheet(
       context: context,
@@ -195,7 +199,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               ListTile(
                 leading: const Icon(Icons.notifications_active_outlined),
                 title: Text(t('Test thông báo', 'Notification test')),
-                subtitle: Text(t('Kiểm tra quyền & hiển thị', 'Check permissions & display')),
               ),
               ListTile(
                 leading: const Icon(Icons.flash_on_outlined),
@@ -205,27 +208,25 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   await NotificationService.instance.showNow(
                     id: 9001,
                     title: t('Thông báo test', 'Test notification'),
-                    body: t('Hiển thị tức thì để kiểm tra quyền', 'Shown instantly to check permission'),
+                    body: t('Hiển thị tức thì để kiểm tra', 'Instant display to verify'),
                   );
                 },
               ),
               ListTile(
                 leading: const Icon(Icons.timer_outlined),
                 title: Text(t('Đặt thông báo SAU 1 PHÚT', 'Schedule IN 1 MINUTE')),
-                subtitle: Text(t('Dùng scheduleOnce để kiểm tra hẹn giờ', 'Use scheduleOnce to test scheduling')),
                 onTap: () async {
                   Navigator.pop(ctx);
                   final when = DateTime.now().add(const Duration(minutes: 1));
                   await NotificationService.instance.scheduleOnce(
                     id: 9002,
-                    title: t('Thông báo test sau 1 phút', 'Test after 1 minute'),
-                    body: t('Nếu thấy trong ~1 phút là OK', 'If you see it in ~1 minute it works'),
+                    title: t('Thông báo test sau 1 phút', 'Test notification after 1 minute'),
+                    body: t('Nếu hiện ~1 phút là OK', 'If it appears in ~1 minute, it works'),
                     whenLocal: when,
                   );
                   if (!mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(t('Đã hẹn: $when', 'Scheduled at: $when'))),
-                  );
+                  ScaffoldMessenger.of(context)
+                      .showSnackBar(SnackBar(content: Text('${t('Đã hẹn', 'Scheduled at')}: $when')));
                 },
               ),
               const SizedBox(height: 12),
@@ -236,6 +237,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
+  // ====================== UI helpers ======================
   Widget _buildEmptyState() => FadeTransition(
     opacity: _fadeAnimation,
     child: Center(
@@ -248,10 +250,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             child: Icon(Icons.medication_outlined, size: 60, color: Color(0xFF93C5FD)),
           ),
           const SizedBox(height: 20),
-          Text(
-            t('Chưa có thuốc nào', 'No medicines yet'),
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-          ),
+          Text(t('Chưa có thuốc nào', 'No medicines yet'),
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
           const SizedBox(height: 6),
           Text(t('Hãy thêm thuốc đầu tiên của bạn!', 'Add your first medicine!'),
               style: const TextStyle(color: Colors.grey)),
@@ -299,7 +299,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             child: Row(
               children: [
                 Container(
-                  width: 56, height: 56,
+                  width: 56,
+                  height: 56,
                   decoration: BoxDecoration(color: Colors.blue[100], borderRadius: BorderRadius.circular(12)),
                   child: Icon(Icons.medication, color: Colors.blue[800]),
                 ),
@@ -308,7 +309,46 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(medicine.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      // tên + checkbox đánh dấu
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(medicine.name,
+                                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                          ),
+                          Tooltip(
+                            message: medicine.taken
+                                ? t('Đã uống', 'Taken')
+                                : t('Đánh dấu đã uống', 'Mark as taken'),
+                            child: IconButton(
+                              icon: Icon(
+                                medicine.taken ? Icons.check_circle : Icons.radio_button_unchecked,
+                                color: medicine.taken ? Colors.green : Colors.grey,
+                              ),
+                              onPressed: () async {
+                                if (medicine.id == null) return;
+                                final newVal = !medicine.taken;
+                                try {
+                                  await service.setTaken(medicine.id!, newVal);
+                                  if (!mounted) return;
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(newVal
+                                          ? t('Đã đánh dấu đã uống', 'Marked as taken')
+                                          : t('Đã bỏ đánh dấu', 'Unmarked')),
+                                    ),
+                                  );
+                                } catch (e) {
+                                  if (!mounted) return;
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+                                  );
+                                }
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
                       const SizedBox(height: 4),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -381,7 +421,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
-          gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Colors.blue[50]!, Colors.white]),
+          gradient:
+          LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Colors.blue[50]!, Colors.white]),
         ),
         child: SafeArea(
           child: Column(
@@ -395,7 +436,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     Row(
                       children: [
                         Container(
-                          width: 48, height: 48,
+                          width: 48,
+                          height: 48,
                           decoration: BoxDecoration(color: Colors.blue, borderRadius: BorderRadius.circular(12)),
                           child: const Icon(Icons.medical_services, color: Colors.white),
                         ),
@@ -419,6 +461,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       ],
                     ),
                     const SizedBox(height: 14),
+                    // ô tìm kiếm
                     Container(
                       decoration: BoxDecoration(
                         color: Colors.grey[100],
@@ -435,6 +478,28 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                         ),
                       ),
+                    ),
+                    const SizedBox(height: 10),
+                    // ✅ bộ lọc
+                    Wrap(
+                      spacing: 8,
+                      children: [
+                        ChoiceChip(
+                          label: Text(t('Tất cả', 'All')),
+                          selected: _filter == MedFilter.all,
+                          onSelected: (_) => setState(() => _filter = MedFilter.all),
+                        ),
+                        ChoiceChip(
+                          label: Text(t('Chưa uống', 'Not taken')),
+                          selected: _filter == MedFilter.notTaken,
+                          onSelected: (_) => setState(() => _filter = MedFilter.notTaken),
+                        ),
+                        ChoiceChip(
+                          label: Text(t('Đã uống', 'Taken')),
+                          selected: _filter == MedFilter.taken,
+                          onSelected: (_) => setState(() => _filter = MedFilter.taken),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -477,7 +542,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           onDismissed: (_) => _deleteMedicine(m),
                           background: Container(
                             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                            decoration: BoxDecoration(color: Colors.red[50], borderRadius: BorderRadius.circular(15)),
+                            decoration:
+                            BoxDecoration(color: Colors.red[50], borderRadius: BorderRadius.circular(15)),
                             alignment: Alignment.centerRight,
                             padding: const EdgeInsets.symmetric(horizontal: 24),
                             child: const Icon(Icons.delete_outline, color: Colors.red),
@@ -494,17 +560,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () async {
-          final result = await Navigator.push(
-            context, MaterialPageRoute(builder: (_) => const AddMedicineScreen()),
-          );
-          if (!mounted) return;
-          if (result == 'added') {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(t('Đã thêm thuốc', 'Medicine added'))),
-            );
-          }
-        },
+        onPressed: _openAdd,
         icon: const Icon(Icons.add),
         label: Text(t('Thêm thuốc', 'Add medicine')),
       ),
