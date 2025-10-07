@@ -7,24 +7,25 @@ import 'firebase_options.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
 import 'screens/home_screen.dart';
-import 'screens/take_medicine_screen.dart'; // ⬅️ Màn xác nhận đã uống
+import 'screens/take_medicine_screen.dart';
 
 // Services
 import 'services/auth_service.dart';
 import 'services/notification_service.dart';
+import 'services/theme_service.dart';
+import 'services/language_service.dart'; // ⬅️ THÊM
 
-// ⬅️ Key để điều hướng khi bấm thông báo
 final GlobalKey<NavigatorState> _navKey = GlobalKey<NavigatorState>();
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
-
-  // 🔔 Khởi tạo notifications + truyền navigatorKey để handle click noti
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   await NotificationService.instance.init(navigatorKey: _navKey);
+
+  // ⬅️ nạp theme & ngôn ngữ đã lưu
+  await ThemeService.instance.init();
+  await LanguageService.instance.init();
 
   runApp(const MedicineApp());
 }
@@ -34,23 +35,46 @@ class MedicineApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Quản lý thuốc',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(primarySwatch: Colors.teal),
+    // Lắng nghe THAY ĐỔI CẢ 2: theme + ngôn ngữ
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: ThemeService.instance.mode,
+      builder: (_, mode, __) {
+        return ValueListenableBuilder<bool>(
+          valueListenable: LanguageService.instance.isVietnamese,
+          builder: (_, __isVi, ___) {
+            return MaterialApp(
+              title: 'Quản lý thuốc',
+              debugShowCheckedModeBanner: false,
+              navigatorKey: _navKey,
 
-      // ⬅️ GẮN navigatorKey để NotificationService có thể push route
-      navigatorKey: _navKey,
+              // Material 3 + 2 bộ theme
+              theme: ThemeData(
+                useMaterial3: true,
+                colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
+                brightness: Brightness.light,
+              ),
+              darkTheme: ThemeData(
+                useMaterial3: true,
+                colorScheme: ColorScheme.fromSeed(
+                  seedColor: Colors.teal,
+                  brightness: Brightness.dark,
+                ),
+                brightness: Brightness.dark,
+              ),
+              themeMode: mode,
 
-      // Màn hình đầu tiên
-      initialRoute: AuthService().getCurrentUser() == null ? '/login' : '/home',
-
-      // Khai báo routes
-      routes: {
-        '/login': (context) => const LoginScreen(),
-        '/register': (context) => const RegisterScreen(),
-        '/home': (context) => const HomeScreen(),
-        '/take': (context) => const TakeMedicineScreen(), // ⬅️ khi bấm thông báo sẽ mở route này
+              // Routes
+              initialRoute:
+              AuthService().getCurrentUser() == null ? '/login' : '/home',
+              routes: {
+                '/login': (_) => const LoginScreen(),
+                '/register': (_) => const RegisterScreen(),
+                '/home': (_) => const HomeScreen(),
+                '/take': (_) => const TakeMedicineScreen(),
+              },
+            );
+          },
+        );
       },
     );
   }

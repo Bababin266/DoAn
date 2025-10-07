@@ -1,8 +1,10 @@
 // lib/screens/add_medicine_screen.dart
 import 'package:flutter/material.dart';
+import '../models/medicine.dart';
 import '../services/medicine_service.dart';
 import '../services/notification_service.dart';
-import '../models/medicine.dart';
+import '../services/language_service.dart';
+import '../services/dose_state_service.dart';
 
 class AddMedicineScreen extends StatefulWidget {
   final Medicine? medicine;
@@ -15,83 +17,99 @@ class AddMedicineScreen extends StatefulWidget {
 class _AddMedicineScreenState extends State<AddMedicineScreen>
     with TickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
-  final _nameController   = TextEditingController();
-  final _dosageController = TextEditingController();
-  final _timeController   = TextEditingController(); // luôn dạng HH:mm
-  final _notesController  = TextEditingController(); // (nếu bạn thêm vào model thì map)
 
-  final MedicineService service = MedicineService();
+  // Controllers
+  final _nameCtrl   = TextEditingController();
+  final _dosageCtrl = TextEditingController();
+  final _time1Ctrl  = TextEditingController(); // HH:mm
+  final _time2Ctrl  = TextEditingController(); // HH:mm
+  final _time3Ctrl  = TextEditingController(); // HH:mm
+  final _noteCtrl   = TextEditingController();
 
-  bool _isLoading = false;
-  TimeOfDay? _selectedTime;
-  String _selectedFrequency = 'Hàng ngày';
-  String _selectedMedicineType = 'Viên nén'; // nếu bạn dùng vào model
+  final MedicineService _service = MedicineService();
 
-  late AnimationController _ac;
-  late Animation<double> _fade;
+  bool _loading = false;
+  late final AnimationController _ac;
+  late final Animation<double> _fade;
 
-  final _frequencies = <String>[
-    'Hàng ngày',
-    '2 lần/ngày',
-    '3 lần/ngày',
-    'Khi cần thiết',
+  static const List<String> _freqCodes = ['once', 'twice', 'thrice', 'prn'];
+  String _freqCode = 'once';
+
+  static const List<String> _typeCodes = [
+    'pill','capsule','syrup','topical','eyedrop','spray','injection'
   ];
+  String _typeCode = 'pill';
 
   bool get _isEditing => widget.medicine != null;
 
   @override
   void initState() {
     super.initState();
-    _ac   = AnimationController(vsync: this, duration: const Duration(milliseconds: 800));
+    _ac   = AnimationController(vsync: this, duration: const Duration(milliseconds: 500));
     _fade = CurvedAnimation(parent: _ac, curve: Curves.easeInOut);
 
-    // Prefill khi sửa
     if (_isEditing) {
-      _nameController.text   = widget.medicine!.name;
-      _dosageController.text = widget.medicine!.dosage;
-      _timeController.text   = widget.medicine!.time; // kỳ vọng HH:mm
-      _selectedFrequency     = widget.medicine!.frequency;
-      _selectedMedicineType  = widget.medicine!.type;
+      final m = widget.medicine!;
+      _nameCtrl.text   = m.name;
+      _dosageCtrl.text = m.dosage;
+      _time1Ctrl.text  = m.time;
 
-      final p = widget.medicine!.time.split(':');
-      if (p.length == 2) {
-        _selectedTime = TimeOfDay(
-          hour: int.tryParse(p[0]) ?? 8,
-          minute: int.tryParse(p[1]) ?? 0,
-        );
-      }
+      _freqCode = _guessFreqCode(m.frequency);
+      _typeCode = _guessTypeCode(m.type);
+
+      // ✳️ Quan trọng: load times đã lưu nếu có
+      _loadSavedTimesIfAny(m.id!);
+    } else {
+      final now = TimeOfDay.now();
+      _time1Ctrl.text = _toHHmm(now);
     }
 
     _ac.forward();
   }
 
+  Future<void> _loadSavedTimesIfAny(String medId) async {
+    // Lấy times đã lưu (nếu người dùng từng đặt giờ #2/#3 khác)
+    final saved = await DoseStateService.instance.getSavedTimes(medId);
+
+    if (saved.isNotEmpty) {
+      // saved[0] thường trùng time1 trong model, giữ value hiện tại
+      if (saved.length >= 2) _time2Ctrl.text = saved[1];
+      if (saved.length >= 3) _time3Ctrl.text = saved[2];
+      setState(() {}); // cập nhật UI
+      return;
+    }
+
+    // Không có dữ liệu đã lưu → chỉ khi đó mới auto gợi ý
+    // để tránh ghi đè giờ người dùng đã đặt
+    final hm1 = _parseHHmm(_time1Ctrl.text);
+    if (_freqCode == 'twice' && _time2Ctrl.text.isEmpty) {
+      _time2Ctrl.text = _toHHmm(TimeOfDay(hour: (hm1.hour + 12) % 24, minute: hm1.minute));
+    }
+    if (_freqCode == 'thrice' && _time2Ctrl.text.isEmpty && _time3Ctrl.text.isEmpty) {
+      _time2Ctrl.text = _toHHmm(TimeOfDay(hour: (hm1.hour + 8) % 24, minute: hm1.minute));
+      _time3Ctrl.text = _toHHmm(TimeOfDay(hour: (hm1.hour + 16) % 24, minute: hm1.minute));
+    }
+    setState(() {});
+  }
+
   @override
   void dispose() {
     _ac.dispose();
-    _nameController.dispose();
-    _dosageController.dispose();
-    _timeController.dispose();
-    _notesController.dispose();
+    _nameCtrl.dispose();
+    _dosageCtrl.dispose();
+    _time1Ctrl.dispose();
+    _time2Ctrl.dispose();
+    _time3Ctrl.dispose();
+    _noteCtrl.dispose();
     super.dispose();
   }
 
-  // ================== Helpers ==================
+  // ===== Helpers =====
+  String t(String vi, String en) =>
+      LanguageService.instance.isVietnamese.value ? vi : en;
 
   String _toHHmm(TimeOfDay t) =>
       '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
-
-  Future<void> _pickTime() async {
-    final t = await showTimePicker(
-      context: context,
-      initialTime: _selectedTime ?? TimeOfDay.now(),
-    );
-    if (t != null) {
-      setState(() {
-        _selectedTime = t;
-        _timeController.text = _toHHmm(t); // chuẩn HH:mm
-      });
-    }
-  }
 
   ({int hour, int minute}) _parseHHmm(String hhmm) {
     final p = hhmm.split(':');
@@ -100,277 +118,379 @@ class _AddMedicineScreenState extends State<AddMedicineScreen>
     return (hour: h.clamp(0, 23), minute: m.clamp(0, 59));
   }
 
-  /// Tạo danh sách mốc giờ (h, m) theo tần suất, bắt đầu từ hh:mm.
-  List<({int h, int m})> _timesFromFrequency(String hhmm, String frequency) {
-    final base = _parseHHmm(hhmm);
-    final h0 = base.hour, m0 = base.minute;
+  Future<void> _pick(String which) async {
+    final ctrl = switch (which) {
+      't1' => _time1Ctrl,
+      't2' => _time2Ctrl,
+      _    => _time3Ctrl,
+    };
+    final seed = ctrl.text.isNotEmpty
+        ? _parseHHmm(ctrl.text)
+        : (which == 't1')
+        ? _parseHHmm(_time1Ctrl.text)
+        : (hour: TimeOfDay.now().hour, minute: TimeOfDay.now().minute);
 
-    switch (frequency) {
-      case '2 lần/ngày':
-        return [
-          (h: h0, m: m0),
-          (h: (h0 + 12) % 24, m: m0),
-        ];
-      case '3 lần/ngày':
-        return [
-          (h: h0, m: m0),
-          (h: (h0 + 8) % 24, m: m0),
-          (h: (h0 + 16) % 24, m: m0),
-        ];
-      case 'Hàng ngày':
-        return [(h: h0, m: m0)];
-      case 'Khi cần thiết':
-      default:
-        return [(h: h0, m: m0)]; // không lặp thêm mốc, nhưng vẫn có mốc chính
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay(hour: seed.hour, minute: seed.minute),
+    );
+    if (picked != null) {
+      ctrl.text = _toHHmm(picked);
+      setState(() {});
     }
   }
 
-  /// Đặt lịch theo danh sách mốc giờ: lịch chính + follow-up 2 phút x10.
-  Future<void> _scheduleAllForDoc({
-    required String docId,
-    required String name,
-    required String dosage,
-    required String hhmm,
-    required String frequency,
-  }) async {
-    final times = _timesFromFrequency(hhmm, frequency);
+  String _freqLabel(String code) {
+    switch (code) {
+      case 'once':   return t('1 lần/ngày', 'Once daily');
+      case 'twice':  return t('2 lần/ngày', 'Twice daily');
+      case 'thrice': return t('3 lần/ngày', '3 times daily');
+      case 'prn':    return t('Khi cần', 'As needed');
+      default:       return code;
+    }
+  }
 
-    for (int i = 0; i < times.length; i++) {
-      final h = times[i].h, m = times[i].m;
+  String _typeLabel(String code) {
+    switch (code) {
+      case 'pill':      return t('Viên nén', 'Pill');
+      case 'capsule':   return t('Viên nang', 'Capsule');
+      case 'syrup':     return t('Siro', 'Syrup');
+      case 'topical':   return t('Thuốc bôi', 'Topical');
+      case 'eyedrop':   return t('Thuốc nhỏ mắt', 'Eye drops');
+      case 'spray':     return t('Thuốc xịt', 'Spray');
+      case 'injection': return t('Thuốc tiêm', 'Injection');
+      default:          return code;
+    }
+  }
 
-      // 1) Lịch hằng ngày (noti chính)
+  String _guessFreqCode(String raw) {
+    switch (raw.trim().toLowerCase()) {
+      case 'hàng ngày':
+      case 'once':
+      case 'once daily':
+        return 'once';
+      case '2 lần/ngày':
+      case 'twice':
+      case 'twice daily':
+        return 'twice';
+      case '3 lần/ngày':
+      case 'thrice':
+      case '3 times daily':
+        return 'thrice';
+      case 'khi cần':
+      case 'prn':
+      case 'as needed':
+        return 'prn';
+      default:
+        return 'once';
+    }
+  }
+
+  String _guessTypeCode(String raw) {
+    final x = raw.trim().toLowerCase();
+    if (['pill','viên nén'].contains(x)) return 'pill';
+    if (['capsule','viên nang'].contains(x)) return 'capsule';
+    if (['syrup','siro'].contains(x)) return 'syrup';
+    if (['topical','thuốc bôi'].contains(x)) return 'topical';
+    if (['eyedrop','eye drops','thuốc nhỏ mắt'].contains(x)) return 'eyedrop';
+    if (['spray','thuốc xịt'].contains(x)) return 'spray';
+    if (['injection','thuốc tiêm'].contains(x)) return 'injection';
+    return 'pill';
+  }
+
+  List<String> _collectTimes() {
+    final t1 = _time1Ctrl.text.trim();
+    final times = <String>[];
+    if (t1.isNotEmpty) times.add(t1);
+    if (_freqCode == 'twice' || _freqCode == 'thrice') {
+      if (_time2Ctrl.text.trim().isNotEmpty) times.add(_time2Ctrl.text.trim());
+    }
+    if (_freqCode == 'thrice') {
+      if (_time3Ctrl.text.trim().isNotEmpty) times.add(_time3Ctrl.text.trim());
+    }
+    return times;
+  }
+
+  Future<void> _scheduleFor(
+      String docId, String name, String dosage, List<String> hhmmList) async {
+    for (var i = 0; i < hhmmList.length; i++) {
+      final hm = _parseHHmm(hhmmList[i]);
+
       await NotificationService.instance.scheduleDaily(
-        id: (docId + '_$i').hashCode,
-        title: 'Nhắc uống thuốc',
+        id: ('${docId}_$i').hashCode,
+        title: t('Nhắc uống thuốc', 'Medicine reminder'),
         body: '$name - $dosage',
-        hour: h,
-        minute: m,
-        payload: 'take:$docId',
+        hour: hm.hour,
+        minute: hm.minute,
+        payload: 'take:$docId:$i',
       );
 
-      // 2) Follow-up: mỗi 2 phút, tối đa 10 lần kể từ giờ chính của NGÀY HIỆN TẠI
       await NotificationService.instance.scheduleFollowUpsForOccurrence(
         medDocId: docId,
-        baseHour: h,
-        baseMinute: m,
+        baseHour: hm.hour,
+        baseMinute: hm.minute,
         count: 10,
         intervalMinutes: 2,
-        title: 'Nhắc lại uống thuốc',
+        title: t('Nhắc lại uống thuốc', 'Reminder again'),
         body: '$name - $dosage',
-        payload: 'take:$docId',
+        payload: 'take:$docId:$i',
       );
     }
   }
 
-  /// Huỷ các lịch hằng ngày cũ (tối đa 3 mốc) + huỷ follow-up của HÔM NAY.
-  Future<void> _cancelOldSchedulesToday(String docId) async {
+  Future<void> _cancelToday(String docId) async {
     for (int i = 0; i < 3; i++) {
-      await NotificationService.instance.cancel((docId + '_$i').hashCode);
+      await NotificationService.instance.cancel(('${docId}_$i').hashCode);
     }
     await NotificationService.instance.cancelTodayFollowUps(docId);
   }
 
-  void _return(String result) {
-    bool popped = false;
-    try { Navigator.of(context).pop(result); popped = true; } catch (_) {}
-    if (!popped) {
-      try { Navigator.of(context, rootNavigator: true).pop(result); popped = true; } catch (_) {}
-    }
-    if (!popped) Navigator.of(context).popUntil((r) => r.isFirst);
+  void _popResult(String result) {
+    if (mounted) Navigator.of(context).pop(result);
   }
-
-  // ================== Save / Delete ==================
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
-    setState(() => _isLoading = true);
 
+    if (_freqCode == 'twice' && _time2Ctrl.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(t('Hãy chọn giờ lần 2', 'Please set time #2'))),
+      );
+      return;
+    }
+    if (_freqCode == 'thrice' &&
+        (_time2Ctrl.text.trim().isEmpty || _time3Ctrl.text.trim().isEmpty)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(t('Hãy chọn đủ giờ lần 2 và 3', 'Please set both time #2 and #3'))),
+      );
+      return;
+    }
+
+    setState(() => _loading = true);
     try {
-      // Chuẩn hoá HH:mm
-      var hhmm = _timeController.text.trim();
-      final hm = _parseHHmm(hhmm);
-      hhmm = '${hm.hour.toString().padLeft(2, '0')}:${hm.minute.toString().padLeft(2, '0')}';
+      final hm1 = _parseHHmm(_time1Ctrl.text.trim());
+      final time1 = '${hm1.hour.toString().padLeft(2,'0')}:${hm1.minute.toString().padLeft(2,'0')}';
 
       final med = Medicine(
         id: _isEditing ? widget.medicine!.id : null,
-        name: _nameController.text.trim(),
-        dosage: _dosageController.text.trim(),
-        time: hhmm,
-        type: _selectedMedicineType,
-        frequency: _selectedFrequency,
-        taken: false, // khi lưu/sửa thì reset về chưa uống cho lần tới
+        name: _nameCtrl.text.trim(),
+        dosage: _dosageCtrl.text.trim(),
+        time: time1,
+        type: _typeCode,
+        frequency: _freqCode,
+        taken: false,
       );
 
+      final times = _collectTimes();
+
       if (_isEditing) {
-        final docId = med.id!;
-        // Huỷ lịch cũ của hôm nay (cả chính & follow-up)
-        await _cancelOldSchedulesToday(docId);
+        final id = med.id!;
+        await _cancelToday(id);
+        await _service.updateMedicine(med);
 
-        // Cập nhật DB
-        await service.updateMedicine(med);
+        // LƯU count + times để lần sau mở sửa sẽ giữ nguyên
+        await DoseStateService.instance.saveCount(id, times.length);
+        await DoseStateService.instance.saveTimes(id, times);
 
-        // Đặt lại lịch theo giờ & tần suất mới
-        await _scheduleAllForDoc(
-          docId: docId,
-          name: med.name,
-          dosage: med.dosage,
-          hhmm: hhmm,
-          frequency: med.frequency,
-        );
-
-        if (mounted) _return('updated');
+        await _scheduleFor(id, med.name, med.dosage, times);
+        _popResult('updated');
       } else {
-        // Thêm mới -> lấy docId
-        final docId = await service.addMedicine(med);
+        final id = await _service.addMedicine(med);
 
-        // Đặt lịch cho docId mới
-        await _scheduleAllForDoc(
-          docId: docId,
-          name: med.name,
-          dosage: med.dosage,
-          hhmm: hhmm,
-          frequency: med.frequency,
-        );
+        await DoseStateService.instance.saveCount(id, times.length);
+        await DoseStateService.instance.saveTimes(id, times);
 
-        if (mounted) _return('added');
+        await _scheduleFor(id, med.name, med.dosage, times);
+        _popResult('added');
       }
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Lỗi: $e'), backgroundColor: Colors.red),
+        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
       );
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) setState(() => _loading = false);
     }
   }
 
-  Future<void> _deleteCurrent() async {
+  Future<void> _delete() async {
     if (!_isEditing || widget.medicine?.id == null) return;
-
     final ok = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Xác nhận xoá'),
-        content: Text("Xoá '${widget.medicine!.name}'?"),
+        title: Text(t('Xác nhận xoá', 'Confirm delete')),
+        content: Text(t("Xoá '${widget.medicine!.name}'?", "Delete '${widget.medicine!.name}'?")),
         actions: [
-          TextButton(onPressed: ()=>Navigator.pop(context,false), child: const Text('Huỷ')),
-          ElevatedButton(onPressed: ()=>Navigator.pop(context,true), child: const Text('Xoá')),
+          TextButton(onPressed: ()=>Navigator.pop(context,false), child: Text(t('Huỷ','Cancel'))),
+          ElevatedButton(onPressed: ()=>Navigator.pop(context,true), child: Text(t('Xoá','Delete'))),
         ],
       ),
     ) ?? false;
-
     if (!ok) return;
 
     try {
-      final docId = widget.medicine!.id!;
-      await _cancelOldSchedulesToday(docId);
-      await service.deleteMedicine(docId);
-      if (mounted) _return('deleted');
+      final id = widget.medicine!.id!;
+      await _cancelToday(id);
+      await _service.deleteMedicine(id);
+      _popResult('deleted');
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Không thể xoá: $e'), backgroundColor: Colors.red),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
     }
   }
 
-  // ================== UI ==================
-
   @override
   Widget build(BuildContext context) {
-    final isEditing = _isEditing;
+    return ValueListenableBuilder<bool>(
+      valueListenable: LanguageService.instance.isVietnamese,
+      builder: (context, isVI, _) {
+        final title = _isEditing
+            ? t('Chỉnh sửa thuốc','Edit medicine')
+            : t('Thêm thuốc mới','Add medicine');
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(isEditing ? 'Chỉnh sửa thuốc' : 'Thêm thuốc mới'),
-        actions: [
-          if (isEditing)
-            IconButton(
-              icon: const Icon(Icons.delete_outline),
-              onPressed: _isLoading ? null : _deleteCurrent,
-              tooltip: 'Xoá',
-            ),
-        ],
-      ),
-      body: FadeTransition(
-        opacity: _fade,
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
-          child: Form(
-            key: _formKey,
-            child: Column(children: [
-              TextFormField(
-                controller: _nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Tên thuốc', prefixIcon: Icon(Icons.medication),
+        return Scaffold(
+          appBar: AppBar(
+            title: Text(title),
+            actions: [
+              if (_isEditing)
+                IconButton(
+                  tooltip: t('Xoá','Delete'),
+                  onPressed: _loading ? null : _delete,
+                  icon: const Icon(Icons.delete_outline),
                 ),
-                validator: (v)=> (v==null||v.trim().isEmpty)?'Nhập tên thuốc':null,
-              ),
-              const SizedBox(height:12),
-
-              TextFormField(
-                controller: _dosageController,
-                decoration: const InputDecoration(
-                  labelText:'Liều lượng', prefixIcon: Icon(Icons.straighten), suffixText:'mg/ml',
-                ),
-                validator: (v)=> (v==null||v.trim().isEmpty)?'Nhập liều lượng':null,
-              ),
-              const SizedBox(height:12),
-
-              TextFormField(
-                controller: _timeController,
-                readOnly: true,
-                onTap: _pickTime,
-                decoration: const InputDecoration(
-                  labelText:'Giờ uống (HH:mm)', prefixIcon: Icon(Icons.access_time),
-                ),
-                validator: (v)=> (v==null||v.trim().isEmpty)?'Chọn giờ':null,
-              ),
-              const SizedBox(height:12),
-
-              DropdownButtonFormField<String>(
-                value: _selectedFrequency,
-                items: _frequencies
-                    .map((e)=>DropdownMenuItem(value:e,child:Text(e)))
-                    .toList(),
-                onChanged: (v)=> setState(()=> _selectedFrequency = v ?? 'Hàng ngày'),
-                decoration: const InputDecoration(
-                  labelText:'Tần suất', prefixIcon: Icon(Icons.repeat),
-                ),
-              ),
-              const SizedBox(height:12),
-
-              // Nếu dùng type trong model:
-              DropdownButtonFormField<String>(
-                value: _selectedMedicineType,
-                items: const [
-                  DropdownMenuItem(value:'Viên nén', child: Text('Viên nén')),
-                  DropdownMenuItem(value:'Viên nang', child: Text('Viên nang')),
-                  DropdownMenuItem(value:'Siro', child: Text('Siro')),
-                  DropdownMenuItem(value:'Thuốc bôi', child: Text('Thuốc bôi')),
-                  DropdownMenuItem(value:'Thuốc nhỏ mắt', child: Text('Thuốc nhỏ mắt')),
-                  DropdownMenuItem(value:'Thuốc xịt', child: Text('Thuốc xịt')),
-                  DropdownMenuItem(value:'Thuốc tiêm', child: Text('Thuốc tiêm')),
-                ],
-                onChanged: (v)=> setState(()=> _selectedMedicineType = v ?? 'Viên nén'),
-                decoration: const InputDecoration(
-                  labelText:'Loại thuốc', prefixIcon: Icon(Icons.category),
-                ),
-              ),
-              const SizedBox(height:24),
-
-              SizedBox(
-                width: double.infinity, height: 52,
-                child: ElevatedButton.icon(
-                  onPressed: _isLoading? null : _save,
-                  icon: Icon(isEditing? Icons.update : Icons.save),
-                  label: Text(isEditing? 'Cập nhật & đặt nhắc' : 'Lưu & đặt nhắc'),
-                ),
-              ),
-            ]),
+            ],
           ),
-        ),
-      ),
+          body: FadeTransition(
+            opacity: _fade,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  children: [
+                    TextFormField(
+                      controller: _nameCtrl,
+                      decoration: InputDecoration(
+                        labelText: t('Tên thuốc','Medicine name'),
+                        prefixIcon: const Icon(Icons.medication),
+                      ),
+                      validator: (v)=> (v==null||v.trim().isEmpty)
+                          ? t('Nhập tên thuốc','Enter medicine name') : null,
+                    ),
+                    const SizedBox(height: 12),
+
+                    TextFormField(
+                      controller: _dosageCtrl,
+                      decoration: InputDecoration(
+                        labelText: t('Liều lượng','Dosage'),
+                        prefixIcon: const Icon(Icons.straighten),
+                        suffixText: 'mg / ml',
+                      ),
+                      validator: (v)=> (v==null||v.trim().isEmpty)
+                          ? t('Nhập liều lượng','Enter dosage') : null,
+                    ),
+                    const SizedBox(height: 12),
+
+                    DropdownButtonFormField<String>(
+                      initialValue: _freqCode,
+                      items: _freqCodes
+                          .map((c)=>DropdownMenuItem(value:c,child:Text(_freqLabel(c))))
+                          .toList(),
+                      onChanged: (v)=> setState(()=> _freqCode = v ?? 'once'),
+                      decoration: InputDecoration(
+                        labelText: t('Tần suất','Frequency'),
+                        prefixIcon: const Icon(Icons.repeat),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    DropdownButtonFormField<String>(
+                      initialValue: _typeCode,
+                      items: _typeCodes
+                          .map((c)=>DropdownMenuItem(value:c,child:Text(_typeLabel(c))))
+                          .toList(),
+                      onChanged: (v)=> setState(()=> _typeCode = v ?? 'pill'),
+                      decoration: InputDecoration(
+                        labelText: t('Loại thuốc','Type'),
+                        prefixIcon: const Icon(Icons.category),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    TextFormField(
+                      controller: _time1Ctrl,
+                      readOnly: true,
+                      onTap: ()=>_pick('t1'),
+                      decoration: InputDecoration(
+                        labelText: t('Giờ lần 1 (HH:mm)','Time #1 (HH:mm)'),
+                        prefixIcon: const Icon(Icons.access_time),
+                      ),
+                      validator: (v)=> (v==null||v.trim().isEmpty)
+                          ? t('Chọn giờ lần 1','Pick time #1') : null,
+                    ),
+                    const SizedBox(height: 12),
+
+                    if (_freqCode == 'twice' || _freqCode == 'thrice') ...[
+                      TextFormField(
+                        controller: _time2Ctrl,
+                        readOnly: true,
+                        onTap: ()=>_pick('t2'),
+                        decoration: InputDecoration(
+                          labelText: t('Giờ lần 2 (HH:mm)','Time #2 (HH:mm)'),
+                          prefixIcon: const Icon(Icons.access_time),
+                        ),
+                        validator: (v) {
+                          if (_freqCode == 'twice' || _freqCode == 'thrice') {
+                            if (v==null || v.trim().isEmpty) {
+                              return t('Chọn giờ lần 2','Pick time #2');
+                            }
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+
+                    if (_freqCode == 'thrice') ...[
+                      TextFormField(
+                        controller: _time3Ctrl,
+                        readOnly: true,
+                        onTap: ()=>_pick('t3'),
+                        decoration: InputDecoration(
+                          labelText: t('Giờ lần 3 (HH:mm)','Time #3 (HH:mm)'),
+                          prefixIcon: const Icon(Icons.access_time),
+                        ),
+                        validator: (v) {
+                          if (_freqCode == 'thrice') {
+                            if (v==null || v.trim().isEmpty) {
+                              return t('Chọn giờ lần 3','Pick time #3');
+                            }
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity, height: 52,
+                      child: ElevatedButton.icon(
+                        onPressed: _loading ? null : _save,
+                        icon: Icon(_isEditing ? Icons.update : Icons.save),
+                        label: Text(_isEditing
+                            ? t('Cập nhật & đặt nhắc','Update & schedule')
+                            : t('Lưu & đặt nhắc','Save & schedule')),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }
