@@ -1,7 +1,7 @@
 name: tbdd
 description: A new Flutter project
 
-publish_to: 'none' # để trống nếu không muốn publish lên pub.dev
+publish_to: 'none'
 
 version: 1.0.0+1
 
@@ -12,7 +12,6 @@ dependencies:
   flutter:
     sdk: flutter
 
-
   # Firebase
   firebase_core: ^3.0.0
   firebase_auth: ^5.0.0
@@ -22,16 +21,78 @@ dependencies:
   flutter_local_notifications: ^17.2.2
   timezone: ^0.9.4
 
-  # ➕ Thêm các package này
+  # Các package khác đã có
   android_intent_plus: ^5.2.0
   device_info_plus: ^10.1.0
   package_info_plus: ^8.0.0
   shared_preferences: ^2.5.3
 
+  # Package cho chức năng Ghi chú
+  intl: ^0.20.2
+  collection: ^1.18.0
+  date_picker_timeline: ^1.2.5
+
+  # === THÊM CÁC PACKAGE SAU ĐỂ XUẤT FILE ===
+  pdf: ^3.10.8
+  printing: ^5.12.0
+  csv: ^6.0.0
+  path_provider: ^2.1.3
+  open_filex: ^4.4.0
+  google_fonts: ^6.2.1
+
+  fl_chart: ^0.68.0
+  table_calendar: ^3.1.2
+
+  # === ĐA NGÔN NGỮ ===
+  flutter_localizations:
+    sdk: flutter
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^3.0.0
+  mocktail: ^1.0.4
+  flutter_launcher_icons: ^0.13.1
 
 flutter:
   uses-material-design: true
+
+  assets:
+    # --- Font và hình ảnh ---
+    - assets/fonts/
+    - assets/images/
+
+    # --- Bổ sung thư mục dịch đa ngôn ngữ ---
+    - assets/i18n/_list.txt
+    - assets/i18n/en.json
+    - assets/i18n/vi.json
+    # 👉 Thêm các file dịch khác nếu có
+    # - assets/i18n/ja.json
+    # - assets/i18n/ko.json
+    # - assets/i18n/fr.json
+    # - assets/i18n/es.json
+    # - assets/i18n/de.json
+    # - assets/i18n/zh-Hans.json
+    # - assets/i18n/zh-Hant.json
+    # - assets/i18n/ru.json
+    # - assets/i18n/ar.json
+    # - assets/i18n/hi.json
+    # - assets/i18n/th.json
+    # - assets/i18n/id.json
+    # - assets/i18n/tr.json
+
+# ================================================================
+# ✅ CẤU HÌNH ICON ỨNG DỤNG
+# ================================================================
+flutter_launcher_icons:
+  ios: true
+  image_path: "assets/images/icon_foreground.png"
+
+  android: true
+  min_sdk_android: 21
+
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/images/icon_foreground.png"
+
+  monochrome: true
+  image_path_android: "assets/images/icon_monochrome.png"

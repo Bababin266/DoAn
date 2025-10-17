@@ -52,7 +52,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
         _passwordController.text.trim(),
       );
 
-      if (user != null) {
+      if (user != null && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Row(
@@ -69,28 +69,108 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
             ),
           ),
         );
+        // Chuyển hướng đến trang home sau khi đăng nhập thành công
         Navigator.pushReplacementNamed(context, "/home");
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              const Icon(Icons.error, color: Colors.white),
-              const SizedBox(width: 8),
-              Expanded(child: Text("Lỗi: $e")),
-            ],
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.error, color: Colors.white),
+                const SizedBox(width: 8),
+                Expanded(child: Text("Lỗi: ${e.toString()}")),
+              ],
+            ),
+            backgroundColor: Colors.red[600],
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
           ),
-          backgroundColor: Colors.red[600],
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-        ),
-      );
+        );
+      }
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
+  }
+
+  // 🔹 HÀM MỚI: HIỂN THỊ DIALOG QUÊN MẬT KHẨU 🔹
+  Future<void> _showForgotPasswordDialog() async {
+    final TextEditingController emailController = TextEditingController();
+    final GlobalKey<FormState> formKey = GlobalKey<FormState>();
+
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false, // Người dùng phải nhấn nút để đóng
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Khôi phục mật khẩu'),
+          content: SingleChildScrollView(
+            child: Form(
+              key: formKey,
+              child: ListBody(
+                children: <Widget>[
+                  const Text('Nhập email của bạn để nhận link khôi phục.'),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: emailController,
+                    keyboardType: TextInputType.emailAddress,
+                    decoration: const InputDecoration(
+                      labelText: 'Email',
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: _validateEmail, // Sử dụng lại validator email
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Hủy'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+            FilledButton( // Dùng FilledButton để làm nổi bật hành động chính
+              child: const Text('Gửi'),
+              onPressed: () async {
+                if (formKey.currentState!.validate()) {
+                  try {
+                    await AuthService().sendPasswordResetEmail(emailController.text.trim());
+                    // Đóng dialog và hiển thị thông báo thành công
+                    if (mounted) {
+                      Navigator.of(context).pop();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: const Text('Đã gửi link khôi phục, vui lòng kiểm tra email!'),
+                          backgroundColor: Colors.green[600],
+                        ),
+                      );
+                    }
+                  } catch (e) {
+                    // Đóng dialog và hiển thị thông báo lỗi
+                    if (mounted) {
+                      Navigator.of(context).pop();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Lỗi: ${e.toString()}'),
+                          backgroundColor: Colors.red[600],
+                        ),
+                      );
+                    }
+                  }
+                }
+              },
+            ),
+          ],
+        );
+      },
+    );
   }
 
   String? _validateEmail(String? value) {
@@ -147,7 +227,6 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          // Logo/Icon
                           Container(
                             width: 80,
                             height: 80,
@@ -170,8 +249,6 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                             ),
                           ),
                           const SizedBox(height: 24),
-
-                          // Title
                           Text(
                             "Chào mừng trở lại!",
                             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
@@ -190,6 +267,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
 
                           // Email Field
                           TextFormField(
+                            key: const Key('email_field'),
                             controller: _emailController,
                             keyboardType: TextInputType.emailAddress,
                             validator: _validateEmail,
@@ -199,22 +277,13 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide(color: Colors.grey[300]!),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide(color: Colors.blue[600]!, width: 2),
-                              ),
-                              filled: true,
-                              fillColor: Colors.grey[50],
                             ),
                           ),
                           const SizedBox(height: 16),
 
                           // Password Field
                           TextFormField(
+                            key: const Key('password_field'),
                             controller: _passwordController,
                             obscureText: _obscurePassword,
                             validator: _validatePassword,
@@ -236,27 +305,15 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide(color: Colors.grey[300]!),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide(color: Colors.blue[600]!, width: 2),
-                              ),
-                              filled: true,
-                              fillColor: Colors.grey[50],
                             ),
                           ),
                           const SizedBox(height: 24),
 
-                          // Forgot Password Link
+                          // 🔹 CẬP NHẬT NÚT "QUÊN MẬT KHẨU" 🔹
                           Align(
                             alignment: Alignment.centerRight,
                             child: TextButton(
-                              onPressed: () {
-                                // Navigate to forgot password screen
-                              },
+                              onPressed: _showForgotPasswordDialog, // Gọi hàm mới ở đây
                               child: Text(
                                 "Quên mật khẩu?",
                                 style: TextStyle(
@@ -273,14 +330,13 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                             width: double.infinity,
                             height: 50,
                             child: ElevatedButton(
+                              key: const Key('login_button'),
                               onPressed: _isLoading ? null : _login,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.blue[600],
-                                foregroundColor: Colors.white,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),
                                 ),
-                                elevation: 3,
                               ),
                               child: _isLoading
                                   ? const SizedBox(
@@ -301,8 +357,6 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                             ),
                           ),
                           const SizedBox(height: 24),
-
-                          // Divider
                           Row(
                             children: [
                               Expanded(child: Divider(color: Colors.grey[300])),
@@ -321,8 +375,6 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                             ],
                           ),
                           const SizedBox(height: 24),
-
-                          // Register Button
                           TextButton(
                             onPressed: () {
                               Navigator.pushNamed(context, "/register");

@@ -1,0 +1,15 @@
+en
+vi
+ja
+ko
+fr
+es
+de
+zh-Hans
+zh-Hant
+ru
+ar
+hi
+th
+id
+tr

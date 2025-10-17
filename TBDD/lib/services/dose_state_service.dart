@@ -74,4 +74,11 @@ class DoseStateService {
     final p = await SharedPreferences.getInstance();
     await p.remove(_key(medId));
   }
+
+  Future<void> clearDoseState(String medId) async {
+    final prefs = await SharedPreferences.getInstance();
+    // Xóa cả count và times liên quan đến medId
+    await prefs.remove('dose_count_$medId');
+    await prefs.remove('dose_times_$medId');
+  }
 }

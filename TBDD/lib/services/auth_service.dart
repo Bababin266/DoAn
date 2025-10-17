@@ -16,4 +16,9 @@ class AuthService {
   }
 
   Future<void> logout() async => _auth.signOut();
+
+  /// Gửi email khôi phục mật khẩu đến địa chỉ email được cung cấp.
+  Future<void> sendPasswordResetEmail(String email) async {
+    await _auth.sendPasswordResetEmail(email: email);
+  }
 }

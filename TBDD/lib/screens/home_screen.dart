@@ -1,49 +1,59 @@
 // lib/screens/home_screen.dart
 import 'dart:async';
-import 'dart:math' show min;
+import 'dart:io';
+import 'dart:typed_data';
+import 'package:csv/csv.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:intl/intl.dart';
+import 'package:open_filex/open_filex.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
 
 import '../models/medicine.dart';
 import '../services/auth_service.dart';
-import '../services/medicine_service.dart';
-import '../services/theme_service.dart';
-import '../services/notification_service.dart';
+import '../services/dose_state_service.dart';
 import '../services/language_service.dart';
-import '../services/dose_state_service.dart'; // lấy giờ 1-2-3
+import '../services/medicine_service.dart';
+import '../services/notification_service.dart';
+import '../services/theme_service.dart';
 import 'add_medicine_screen.dart';
+import 'compliance_screen.dart';
+import 'notes_screen.dart';
+import 'medicine_detail_screen.dart';
 
-enum MedFilter { all, notTaken, taken }
+enum MedFilter { all, notTaken, taken, missed }
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
-
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
-  final MedicineService service = MedicineService();
+  final MedicineService _medicineService = MedicineService();
   final AuthService _authService = AuthService();
+  final NotificationService _notiService = NotificationService.instance;
 
-  late AnimationController _animationController;
-  late Animation<double> _fadeAnimation;
-
+  late final AnimationController _animationController;
   final TextEditingController _searchController = TextEditingController();
+
   String _searchQuery = '';
   Timer? _debounce;
-
   MedFilter _filter = MedFilter.all;
 
-  String t(String vi, String en) =>
-      LanguageService.instance.isVietnamese.value ? vi : en;
+  // helper tương thích cũ VI/EN (fallback EN cho ngôn ngữ khác)
+  String t(String vi, String en) => LanguageService.instance.t(vi, en);
 
   @override
   void initState() {
     super.initState();
     _animationController =
         AnimationController(duration: const Duration(milliseconds: 800), vsync: this);
-    _fadeAnimation = CurvedAnimation(parent: _animationController, curve: Curves.easeInOut);
-    _animationController.forward();
+    Future.delayed(const Duration(milliseconds: 200), () {
+      if (mounted) _animationController.forward();
+    });
   }
 
   @override
@@ -54,706 +64,943 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     super.dispose();
   }
 
-  void _toggleLanguage() {
-    final ln = LanguageService.instance.isVietnamese;
-    ln.value = !ln.value;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(ln.value ? 'Đã chuyển sang Tiếng Việt' : 'Switched to English')),
-    );
-  }
-
   void _onSearchChanged(String value) {
     _debounce?.cancel();
-    _debounce = Timer(const Duration(milliseconds: 250), () {
+    _debounce = Timer(const Duration(milliseconds: 300), () {
       if (!mounted) return;
       setState(() => _searchQuery = value.trim());
     });
   }
 
-  List<Medicine> _filterMedicines(List<Medicine> medicines) {
+  List<Medicine> _filterMedicines(
+      List<Medicine> medicines,
+      Map<String, List<bool>> missedStatus,
+      ) {
     List<Medicine> list = medicines;
     if (_searchQuery.isNotEmpty) {
       final q = _searchQuery.toLowerCase();
-      list = list
-          .where((m) =>
-      m.name.toLowerCase().contains(q) ||
-          m.dosage.toLowerCase().contains(q) ||
-          m.time.toLowerCase().contains(q))
-          .toList();
+      list = list.where((m) =>
+      m.name.toLowerCase().contains(q) || m.dosage.toLowerCase().contains(q)).toList();
     }
-
     switch (_filter) {
       case MedFilter.notTaken:
         return list.where((m) => !m.taken).toList();
       case MedFilter.taken:
         return list.where((m) => m.taken).toList();
+      case MedFilter.missed:
+        return list
+            .where((m) => missedStatus[m.id]?.any((isMissed) => isMissed) ?? false)
+            .toList();
       case MedFilter.all:
       default:
         return list;
     }
   }
 
-  Future<bool> _confirmDelete(Medicine medicine) async {
-    return await showDialog<bool>(
+  // ================== DELETE (i18n) ==================
+  Future<void> _deleteMedicine(Medicine medicine) async {
+    final L = LanguageService.instance;
+
+    final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-        title: Row(
-          children: [
-            const Icon(Icons.warning, color: Colors.orange),
-            const SizedBox(width: 8),
-            Text(t('Xác nhận xóa', 'Confirm delete')),
-          ],
-        ),
-        content: Text(t(
-            "Bạn có chắc chắn muốn xóa '${medicine.name}' không?",
-            "Are you sure you want to delete '${medicine.name}'?")),
+        title: Text(L.tr('confirm.delete.title')),
+        content:
+        Text(L.tr('confirm.delete.body', params: {'name': medicine.name})),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text(t('Hủy', 'Cancel')),
+            child: Text(L.tr('action.cancel')),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red, foregroundColor: Colors.white),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: Text(t('Xóa', 'Delete')),
+            child: Text(L.tr('action.delete')),
           ),
         ],
       ),
     ) ??
         false;
-  }
 
-  Future<void> _deleteMedicine(Medicine medicine) async {
-    final id = medicine.id;
-    if (id == null) return;
+    if (!confirm || !mounted) return;
+
     try {
-      await service.deleteMedicine(id);
+      await _notiService.cancelAllNotificationsForMedicine(medicine.id!);
+      await _medicineService.deleteMedicine(medicine.id!);
+      await DoseStateService.instance.clearDoseState(medicine.id!);
+
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(t("Đã xóa '${medicine.name}'", "Deleted '${medicine.name}'"))),
-      );
+      ScaffoldMessenger.of(context)
+        ..removeCurrentSnackBar()
+        ..showSnackBar(SnackBar(
+          content:
+          Text(L.tr('toast.deleted', params: {'name': medicine.name})),
+        ));
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(t("Không thể xóa: $e", "Cannot delete: $e")),
+          content: Text(L.tr('error.delete') + '$e'),
           backgroundColor: Colors.red,
         ),
       );
     }
   }
 
-  Future<void> _openAdd() async {
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const AddMedicineScreen()),
-    );
-    if (!mounted) return;
-    if (result == 'added') {
+  // ================== EXPORT ==================
+  Future<List<Medicine>> _getFilteredMedsForExport() async {
+    final allMeds = await _medicineService.getMedicines().first;
+    return allMeds;
+  }
+
+  Future<void> _exportToCsv() async {
+    final L = LanguageService.instance;
+    try {
+      final medicines = await _getFilteredMedsForExport();
+      if (medicines.isEmpty) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(L.tr('export.none'))));
+        return;
+      }
+      final rows = <List<dynamic>>[
+        [t('Tên thuốc', 'Name'), t('Liều lượng', 'Dosage'), t('Tần suất', 'Frequency')],
+        ...medicines.map((m) => [m.name, m.dosage, _freqLabel(m.frequency)]),
+      ];
+      final csvData = const ListToCsvConverter().convert(rows);
+      final dir = await getTemporaryDirectory();
+      final path =
+          '${dir.path}/danh_sach_thuoc_${DateTime.now().millisecondsSinceEpoch}.csv';
+      final file = File(path);
+      await file.writeAsString(csvData, flush: true);
+
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(t('Lưu thành công', 'Saved successfully'))),
+        SnackBar(
+          content: Text(L.tr('export.saved.csv') + file.path.split('/').last),
+          action: SnackBarAction(
+              label: L.tr('action.open'), onPressed: () => OpenFilex.open(path)),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(t('Lỗi khi xuất CSV: ', 'Error exporting CSV: ') + '$e'),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }
 
-  Future<void> _logout() async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-        title: Text(t('Đăng xuất', 'Logout')),
-        content:
-        Text(t('Bạn có chắc chắn muốn đăng xuất?', 'Are you sure you want to log out?')),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.of(ctx).pop(false), child: Text(t('Hủy', 'Cancel'))),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red, foregroundColor: Colors.white),
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: Text(t('Đăng xuất', 'Logout')),
-          ),
-        ],
-      ),
-    ) ??
-        false;
+  Future<void> _exportToPdf() async {
+    final L = LanguageService.instance;
+    try {
+      final medicines = await _getFilteredMedsForExport();
+      if (medicines.isEmpty) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(L.tr('export.none'))));
+        return;
+      }
+      final pdfData = await _generatePdf(medicines);
+      final dir = await getTemporaryDirectory();
+      final path =
+          '${dir.path}/danh_sach_thuoc_${DateTime.now().millisecondsSinceEpoch}.pdf';
+      final file = File(path);
+      await file.writeAsBytes(pdfData, flush: true);
 
-    if (ok) {
-      await _authService.logout();
       if (!mounted) return;
-      Navigator.pushReplacementNamed(context, '/login');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(L.tr('export.saved.pdf') + file.path.split('/').last),
+          action: SnackBarAction(
+              label: L.tr('action.open'), onPressed: () => OpenFilex.open(path)),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(t('Lỗi khi xuất PDF: ', 'Error exporting PDF: ') + '$e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
-  Widget _buildEmptyState() => FadeTransition(
-    opacity: _fadeAnimation,
-    child: Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const CircleAvatar(
-            radius: 60,
-            backgroundColor: Color(0xFFEFF6FF),
-            child: Icon(Icons.medication_outlined, size: 60, color: Color(0xFF93C5FD)),
-          ),
-          const SizedBox(height: 20),
-          Text(t('Chưa có thuốc nào', 'No medicines yet'),
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 6),
-          Text(t('Hãy thêm thuốc đầu tiên của bạn!', 'Add your first medicine!'),
-              style: const TextStyle(color: Colors.grey)),
-          const SizedBox(height: 20),
-          ElevatedButton.icon(
-            onPressed: _openAdd,
-            icon: const Icon(Icons.add),
-            label: Text(t('Thêm thuốc mới', 'Add new medicine')),
+  Future<Uint8List> _generatePdf(List<Medicine> medicines) async {
+    final L = LanguageService.instance;
+    final pdf = pw.Document();
+
+    final fontData = await rootBundle.load('assets/fonts/Roboto-Regular.ttf');
+    final boldFontData = await rootBundle.load('assets/fonts/Roboto-Bold.ttf');
+    final ttf = pw.Font.ttf(fontData);
+    final ttfBold = pw.Font.ttf(boldFontData);
+
+    pdf.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        theme: pw.ThemeData.withFont(base: ttf, bold: ttfBold),
+        header: (ctx) => pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            pw.Text(L.tr('pdf.title'),
+                style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 22)),
+            pw.SizedBox(height: 8),
+            pw.Text('${L.tr('pdf.exported.on')}: '
+                '${DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now())}'),
+            pw.SizedBox(height: 16),
+          ],
+        ),
+        build: (ctx) => [
+          pw.Table.fromTextArray(
+            headers: [t('Tên thuốc', 'Name'), t('Liều lượng', 'Dosage'), t('Tần suất', 'Frequency')],
+            data: medicines
+                .map((m) => [m.name, m.dosage, _freqLabel(m.frequency)])
+                .toList(),
+            border: pw.TableBorder.all(),
+            headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+            headerDecoration: const pw.BoxDecoration(color: PdfColors.grey300),
+            cellAlignments: {
+              0: pw.Alignment.centerLeft,
+              1: pw.Alignment.center,
+              2: pw.Alignment.center
+            },
           ),
         ],
+        footer: (ctx) => pw.Container(
+          alignment: pw.Alignment.centerRight,
+          child: pw.Text(
+            '${L.tr('pdf.page')} ${ctx.pageNumber} / ${ctx.pagesCount}',
+            style: const pw.TextStyle(color: PdfColors.grey),
+          ),
+        ),
       ),
-    ),
-  );
+    );
+    return pdf.save();
+  }
 
-  int _countByFreq(String freqCode) {
-    switch (freqCode) {
+  // ================== UI ==================
+  String _homeLogoAsset(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return isDark
+        ? 'assets/images/icon_monochrome.png'
+        : 'assets/images/icon_foreground.png';
+  }
+
+  Widget _buildEmptySliver() {
+    final L = LanguageService.instance;
+    return SliverFillRemaining(
+      hasScrollBody: false,
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.inbox_outlined, size: 80, color: Colors.grey[300]),
+            const SizedBox(height: 18),
+            Text(L.tr('empty.title'), style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 6),
+            Text(
+              L.tr('empty.hint'),
+              style:
+              Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.grey),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  int _countByFreq(String code) {
+    switch (code) {
       case 'twice':
         return 2;
       case 'thrice':
         return 3;
-      case 'once':
       default:
         return 1;
     }
   }
 
-  Widget _buildMedicineCard(Medicine medicine, int index) {
-    final start = min(index * 0.08, 0.8);
-    final end = min(start + 0.5, 1.0);
-    final slide = Tween<Offset>(begin: Offset(0, 0.15 * (index + 1)), end: Offset.zero).animate(
-        CurvedAnimation(parent: _animationController, curve: Interval(start, end, curve: Curves.easeOut)));
-
+  Widget _buildMedicineCard(Medicine medicine, int index, int total) {
+    final anim = CurvedAnimation(
+      parent: _animationController,
+      curve: Interval(index / total, 1.0, curve: Curves.easeOutCubic),
+    );
     final count = _countByFreq(medicine.frequency);
 
     return FadeTransition(
-      opacity: _fadeAnimation,
+      opacity: anim,
       child: SlideTransition(
-        position: slide,
-        child: Card(
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-          elevation: 3,
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Icon trái
-                Container(
-                  width: 56,
-                  height: 56,
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primaryContainer,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(Icons.medication, color: Theme.of(context).colorScheme.primary),
-                ),
-                const SizedBox(width: 16),
+        position: Tween<Offset>(begin: const Offset(0, .4), end: Offset.zero).animate(anim),
+        child: FutureBuilder<List<String>>(
+          future: DoseStateService.instance.getSavedTimes(medicine.id!),
+          initialData: const [],
+          builder: (context, timeSnap) {
+            final doseTimes = timeSnap.data ?? [];
+            return StreamBuilder(
+              stream: _medicineService.watchMedicineDoc(medicine.id!),
+              builder: (context, snap) {
+                bool allDone = medicine.taken;
+                int takenCount = 0;
+                List<bool> takenToday = [];
+                List<bool> missedToday = List.filled(count, false);
+                bool hasMissed = false;
 
-                // Nội dung + per-occurrence checks
-                Expanded(
-                  child: (medicine.id == null)
-                      ? _MedicineStaticInfo(
-                    name: medicine.name,
-                    dosage: medicine.dosage,
-                    time: medicine.time,
-                    allDone: medicine.taken,
-                    t: t,
-                  )
-                      : StreamBuilder(
-                    stream: service.watchMedicineDoc(medicine.id!),
-                    builder: (context, snap) {
-                      List<bool> takenToday = List<bool>.filled(count, false);
-                      bool allDone = false;
+                if (snap.hasData && snap.data!.exists) {
+                  takenToday =
+                      _medicineService.getTodayArrayFromDoc(snap.data!, count);
+                  takenCount = takenToday.where((e) => e).length;
+                  allDone = takenCount == count;
 
-                      if (snap.hasData && (snap.data as dynamic).exists) {
-                        takenToday = service.getTodayArrayFromDoc(snap.data as dynamic, count);
-                        allDone = takenToday.every((e) => e);
-                      } else {
-                        allDone = (count == 1) ? medicine.taken : false; // fallback
+                  final now = DateTime.now();
+                  for (int i = 0; i < doseTimes.length; i++) {
+                    final parts = doseTimes[i].split(':');
+                    if (parts.length == 2) {
+                      final h = int.tryParse(parts[0]) ?? 0;
+                      final m = int.tryParse(parts[1]) ?? 0;
+                      final t = DateTime(now.year, now.month, now.day, h, m);
+                      if (now.isAfter(t) &&
+                          (i >= takenToday.length || !takenToday[i])) {
+                        missedToday[i] = true;
                       }
+                    }
+                  }
+                  hasMissed = missedToday.any((b) => b);
+                }
 
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Tiêu đề + tích lớn nếu xong
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  medicine.name,
-                                  style: const TextStyle(
-                                      fontSize: 18, fontWeight: FontWeight.bold),
-                                ),
-                              ),
-                              if (allDone)
-                                const Icon(Icons.verified, color: Colors.green, size: 20),
-                            ],
-                          ),
-                          const SizedBox(height: 6),
+                final stripeColor = hasMissed
+                    ? Colors.red.shade400
+                    : allDone
+                    ? Colors.teal.shade700
+                    : (takenCount > 0)
+                    ? Colors.teal.shade300
+                    : Colors.grey.shade400;
 
-                          // Liều lượng
-                          Container(
-                            padding:
-                            const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: Colors.orange.withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              medicine.dosage,
-                              style: TextStyle(
-                                color: Colors.orange[800],
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-
-                          // 🕓 Hiển thị giờ 1-2-3 (nếu có)
-                          FutureBuilder<List<String>>(
-                            future: medicine.id == null
-                                ? Future.value([medicine.time])
-                                : DoseStateService.instance.getSavedTimes(medicine.id!),
-                            builder: (context, snap) {
-                              final times =
-                              (snap.data != null && snap.data!.isNotEmpty)
-                                  ? snap.data!
-                                  : [medicine.time];
-                              final text = times.join(', ');
-                              return Row(
-                                children: [
-                                  Icon(Icons.access_time,
-                                      size: 16, color: Colors.grey[600]),
-                                  const SizedBox(width: 6),
-                                  Flexible(
-                                    child: Text(
-                                      t("Uống lúc: $text", "Time: $text"),
-                                      style:
-                                      const TextStyle(color: Colors.black54),
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                ],
-                              );
-                            },
-                          ),
-                          const SizedBox(height: 10),
-
-                          // ✅ Hàng tích nhỏ theo số lần
-                          Wrap(
-                            spacing: 10,
-                            children: List.generate(count, (i) {
-                              final on = takenToday[i] == true;
-                              return InkWell(
-                                borderRadius: BorderRadius.circular(16),
-                                onTap: () async {
-                                  if (medicine.id == null) return;
-                                  try {
-                                    final newVal = !on;
-                                    // Tính thử xem sau khi đổi có hoàn thành hết không
-                                    final nextArr = [...takenToday]..[i] = newVal;
-                                    final willAllDone =
-                                    nextArr.every((e) => e == true);
-
-                                    await service.toggleTodayIntake(
-                                      medId: medicine.id!,
-                                      index: i,
-                                      count: count,
-                                      value: newVal,
-                                    );
-
-                                    // Nếu lần này vừa hoàn thành tất cả → huỷ follow-ups hôm nay
-                                    if (willAllDone) {
-                                      await NotificationService.instance
-                                          .cancelTodayFollowUps(medicine.id!);
-                                    }
-
-                                    if (!mounted) return;
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text(newVal
-                                            ? t('Đã uống lần ${i + 1}',
-                                            'Marked dose ${i + 1}')
-                                            : t('Bỏ tích lần ${i + 1}',
-                                            'Unchecked dose ${i + 1}')),
-                                        duration:
-                                        const Duration(milliseconds: 900),
-                                      ),
-                                    );
-                                  } catch (e) {
-                                    if (!mounted) return;
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text('Error: $e'),
-                                        backgroundColor: Colors.red,
-                                      ),
-                                    );
-                                  }
-                                },
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      on
-                                          ? Icons.check_circle
-                                          : Icons.radio_button_unchecked,
-                                      color: on ? Colors.green : Colors.grey,
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Text(t('Lần ${i + 1}', 'Dose ${i + 1}')),
-                                  ],
-                                ),
-                              );
-                            }),
-                          ),
-                        ],
+                return Card(
+                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  elevation: 4,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16)),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(16),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => MedicineDetailScreen(medicine: medicine),
+                        ),
                       );
                     },
-                  ),
-                ),
+                    child: IntrinsicHeight(
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 8,
+                            decoration: BoxDecoration(
+                              color: stripeColor,
+                              borderRadius: const BorderRadius.only(
+                                topLeft: Radius.circular(16),
+                                bottomLeft: Radius.circular(16),
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 12),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // Title + per-card menu
+                                  Row(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              medicine.name,
+                                              style: Theme.of(context)
+                                                  .textTheme
+                                                  .titleLarge
+                                                  ?.copyWith(
+                                                  fontWeight:
+                                                  FontWeight.bold),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Chip(
+                                              avatar: Icon(
+                                                Icons.access_time_filled,
+                                                size: 16,
+                                                color: Theme.of(context)
+                                                    .colorScheme
+                                                    .primary,
+                                              ),
+                                              label: Text(
+                                                doseTimes.isEmpty
+                                                    ? medicine.time
+                                                    : doseTimes.join(' - '),
+                                                style: const TextStyle(
+                                                    fontWeight:
+                                                    FontWeight.w500),
+                                              ),
+                                              padding:
+                                              const EdgeInsets.symmetric(
+                                                  horizontal: 4),
+                                              visualDensity:
+                                              VisualDensity.compact,
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      PopupMenuButton<String>(
+                                        onSelected: (v) async {
+                                          if (v == 'edit') {
+                                            if (!mounted) return;
+                                            await Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (_) =>
+                                                    AddMedicineScreen(
+                                                        medicine: medicine),
+                                              ),
+                                            );
+                                          } else if (v == 'delete') {
+                                            await _deleteMedicine(medicine);
+                                          }
+                                        },
+                                        itemBuilder: (context) {
+                                          final L = LanguageService.instance;
+                                          return [
+                                            PopupMenuItem(
+                                              value: 'edit',
+                                              child: Row(
+                                                children: [
+                                                  const Icon(
+                                                      Icons.edit_outlined,
+                                                      color: Colors.blue),
+                                                  const SizedBox(width: 8),
+                                                  Text(L.tr('action.edit')),
+                                                ],
+                                              ),
+                                            ),
+                                            PopupMenuItem(
+                                              value: 'delete',
+                                              child: Row(
+                                                children: [
+                                                  const Icon(
+                                                      Icons.delete_outline,
+                                                      color: Colors.red),
+                                                  const SizedBox(width: 8),
+                                                  Text(L.tr('action.delete')),
+                                                ],
+                                              ),
+                                            ),
+                                          ];
+                                        },
+                                        icon: Icon(Icons.more_vert,
+                                            color: Colors.grey[600]),
+                                      ),
+                                    ],
+                                  ),
+                                  const Divider(height: 20),
 
-                // Cột nút phải
-                Column(
-                  children: [
-                    IconButton(
-                      tooltip: t('Xoá', 'Delete'),
-                      onPressed: () async {
-                        final ok = await _confirmDelete(medicine);
-                        if (ok) _deleteMedicine(medicine);
-                      },
-                      icon: const Icon(Icons.delete_outline),
-                      color: Colors.red,
+                                  // dose chips
+                                  Wrap(
+                                    spacing: 8,
+                                    runSpacing: 4,
+                                    children: List.generate(count, (i) {
+                                      final isTaken =
+                                      i < takenToday.length ? takenToday[i] : false;
+                                      final isMissed =
+                                      i < missedToday.length ? missedToday[i] : false;
+                                      final label = i < doseTimes.length
+                                          ? doseTimes[i]
+                                          : t('Lần ${i + 1}', 'Dose ${i + 1}');
+                                      return ActionChip(
+                                        avatar: Icon(
+                                          isTaken
+                                              ? Icons.check_circle
+                                              : (isMissed
+                                              ? Icons.warning_amber_rounded
+                                              : Icons.radio_button_unchecked),
+                                          color: isTaken
+                                              ? Colors.white
+                                              : (isMissed
+                                              ? Colors.white
+                                              : Colors.grey[700]),
+                                        ),
+                                        label: Text(label),
+                                        backgroundColor: isTaken
+                                            ? stripeColor
+                                            : (isMissed
+                                            ? Colors.red.shade400
+                                            : Theme.of(context)
+                                            .colorScheme
+                                            .surfaceVariant),
+                                        labelStyle: TextStyle(
+                                          color: (isTaken || isMissed)
+                                              ? Colors.white
+                                              : Theme.of(context)
+                                              .textTheme
+                                              .bodyLarge
+                                              ?.color,
+                                          fontWeight: (isTaken || isMissed)
+                                              ? FontWeight.bold
+                                              : FontWeight.normal,
+                                        ),
+                                        onPressed: () {
+                                          _medicineService.toggleTodayIntake(
+                                            medId: medicine.id!,
+                                            index: i,
+                                            count: count,
+                                            value: !isTaken,
+                                          );
+                                        },
+                                      );
+                                    }),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                    IconButton(
-                      tooltip: t('Sửa', 'Edit'),
-                      onPressed: () async {
-                        final result = await Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (_) => AddMedicineScreen(medicine: medicine)),
-                        );
-                        if (!mounted) return;
-                        if (result == 'updated') {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                                content: Text(
-                                    t('Đã cập nhật thuốc', 'Medicine updated'))),
-                          );
-                        } else if (result == 'deleted') {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                                content:
-                                Text(t('Đã xoá thuốc', 'Medicine deleted'))),
-                          );
-                        }
-                      },
-                      icon: const Icon(Icons.edit_outlined),
-                      color: Colors.blue,
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
+                  ),
+                );
+              },
+            );
+          },
         ),
       ),
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return ValueListenableBuilder<bool>(
-      valueListenable: LanguageService.instance.isVietnamese,
-      builder: (context, isVI, _) {
-        final title = t('Danh sách thuốc', 'Medicine List');
+  Future<Map<String, List<bool>>> _calculateAllMissedStatuses(
+      List<Medicine> medicines) async {
+    final now = DateTime.now();
+    final result = <String, List<bool>>{};
 
-        return Scaffold(
-          body: SafeArea(
-            child: Column(
+    for (final m in medicines) {
+      final count = _countByFreq(m.frequency);
+      final missed = List<bool>.filled(count, false);
+      final times = await DoseStateService.instance.getSavedTimes(m.id!);
+      final doc = await _medicineService.watchMedicineDoc(m.id!).first;
+
+      if (doc.exists) {
+        final takenToday = _medicineService.getTodayArrayFromDoc(doc, count);
+        for (int i = 0; i < times.length; i++) {
+          final p = times[i].split(':');
+          if (p.length == 2) {
+            final h = int.tryParse(p[0]) ?? 0;
+            final mm = int.tryParse(p[1]) ?? 0;
+            final t = DateTime(now.year, now.month, now.day, h, mm);
+            if (now.isAfter(t) && (i >= takenToday.length || !takenToday[i])) {
+              missed[i] = true;
+            }
+          }
+        }
+      }
+      result[m.id!] = missed;
+    }
+    return result;
+  }
+
+  String _freqLabel(String code) {
+    switch (code) {
+      case 'twice':
+        return t('2 lần/ngày', 'Twice daily');
+      case 'thrice':
+        return t('3 lần/ngày', '3 times daily');
+      default:
+        return t('1 lần/ngày', 'Once daily');
+    }
+  }
+
+  Future<void> _logout() async {
+    final L = LanguageService.instance;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(L.tr('logout.title')),
+        content: Text(L.tr('logout.body')),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: Text(L.tr('action.cancel'))),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child:
+            Text(L.tr('menu.logout'), style: const TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    ) ??
+        false;
+    if (!ok) return;
+    await _authService.logout();
+    if (!mounted) return;
+    Navigator.pushReplacementNamed(context, '/login');
+  }
+
+  // Language Picker ở AppBar menu
+  void _showLanguagePicker(BuildContext context) {
+    final ls = LanguageService.instance;
+    showModalBottomSheet(
+      context: context,
+      showDragHandle: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        return ValueListenableBuilder<String>(
+          valueListenable: ls.langCode,
+          builder: (_, code, __) {
+            final items = ls.supported.value;
+            return ListView(
+              padding: const EdgeInsets.symmetric(vertical: 8),
               children: [
-                // Header + tìm kiếm
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  color: Theme.of(context).colorScheme.surface,
-                  child: Column(
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            width: 48,
-                            height: 48,
-                            decoration: BoxDecoration(
-                                color: Theme.of(context).colorScheme.primary,
-                                borderRadius: BorderRadius.circular(12)),
-                            child: const Icon(Icons.medical_services,
-                                color: Colors.white),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(title,
-                                style: const TextStyle(
-                                    fontSize: 22, fontWeight: FontWeight.bold)),
-                          ),
-                          // 🌞/🌚 Nút chỉnh sáng-tối
-                          ValueListenableBuilder<ThemeMode>(
-                            valueListenable: ThemeService.instance.mode,
-                            builder: (context, mode, _) {
-                              final isDark = mode == ThemeMode.dark ||
-                                  (mode == ThemeMode.system &&
-                                      MediaQuery.of(context).platformBrightness ==
-                                          Brightness.dark);
-                              return IconButton(
-                                tooltip: t('Chế độ sáng/tối', 'Light/Dark mode'),
-                                onPressed: () => ThemeService.instance.toggle(),
-                                icon: Icon(isDark
-                                    ? Icons.dark_mode
-                                    : Icons.light_mode),
-                              );
-                            },
-                          ),
-                          // 🌐 Đổi ngôn ngữ
-                          IconButton(
-                            tooltip: t('Ngôn ngữ', 'Language'),
-                            onPressed: _toggleLanguage,
-                            icon: const Icon(Icons.language),
-                          ),
-                          // 🚪 Đăng xuất
-                          IconButton(
-                            tooltip: t('Đăng xuất', 'Logout'),
-                            onPressed: _logout,
-                            icon:
-                            const Icon(Icons.logout, color: Colors.red),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 14),
-
-                      // Ô tìm kiếm
-                      Container(
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.surfaceVariant,
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-                        child: TextField(
-                          controller: _searchController,
-                          onChanged: _onSearchChanged,
-                          decoration: InputDecoration(
-                            hintText: t('Tìm kiếm thuốc...', 'Search medicine...'),
-                            prefixIcon: const Icon(Icons.search),
-                            border: InputBorder.none,
-                            contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 12),
-                          ),
-                        ),
-                      ),
-                    ],
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                  child: Text(
+                    ls.tMap({
+                      'vi': 'Chọn ngôn ngữ',
+                      'en': 'Choose language',
+                      'ja': '言語を選択',
+                      'ko': '언어 선택',
+                      'fr': 'Choisir la langue'
+                    }),
+                    style: Theme.of(context).textTheme.titleLarge,
                   ),
                 ),
-
-                // Danh sách + bộ lọc trạng thái (có đếm)
-                Expanded(
-                  child: StreamBuilder<List<Medicine>>(
-                    stream: service.getMedicines(),
-                    builder: (context, snapshot) {
-                      if (snapshot.hasError) {
-                        return Center(
-                            child: Text(
-                                t('Lỗi tải dữ liệu:\n', 'Failed to load:\n') +
-                                    '${snapshot.error}',
-                                textAlign: TextAlign.center));
-                      }
-                      if (snapshot.connectionState ==
-                          ConnectionState.waiting) {
-                        return const Center(child: CircularProgressIndicator());
-                      }
-
-                      final data = snapshot.data ?? [];
-
-                      // 🧮 Đếm số đã uống / chưa uống để hiển thị lên chip
-                      final takenCount =
-                          data.where((m) => m.taken).length;
-                      final notTakenCount = data.length - takenCount;
-
-                      // Lọc theo từ khoá + bộ lọc trạng thái hiện tại
-                      final filtered = _filterMedicines(data);
-
-                      // Nếu CẢ DANH SÁCH trống hoàn toàn
-                      if (data.isEmpty) {
-                        return _buildEmptyState();
-                      }
-
-                      // Có dữ liệu → hiển thị CHIP + LIST
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          // 🔘 Bộ lọc trạng thái + đếm
-                          Padding(
-                            padding:
-                            const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                            child: Wrap(
-                              spacing: 8,
-                              runSpacing: 4,
-                              children: [
-                                ChoiceChip(
-                                  label: Text(
-                                      t('Tất cả', 'All') +
-                                          ' (${data.length})'),
-                                  selected: _filter == MedFilter.all,
-                                  onSelected: (_) => setState(
-                                          () => _filter = MedFilter.all),
-                                ),
-                                ChoiceChip(
-                                  label: Text(
-                                      t('Chưa uống', 'Not taken') +
-                                          ' ($notTakenCount)'),
-                                  selected: _filter == MedFilter.notTaken,
-                                  onSelected: (_) => setState(
-                                          () => _filter = MedFilter.notTaken),
-                                ),
-                                ChoiceChip(
-                                  label: Text(
-                                      t('Đã uống', 'Taken') +
-                                          ' ($takenCount)'),
-                                  selected: _filter == MedFilter.taken,
-                                  onSelected: (_) => setState(
-                                          () => _filter = MedFilter.taken),
-                                ),
-                              ],
-                            ),
-                          ),
-
-                          // Kết quả sau khi lọc
-                          if (filtered.isEmpty)
-                            Expanded(
-                              child: Center(
-                                child: Text(
-                                  t('Không có thuốc phù hợp với bộ lọc',
-                                      'No medicines match the filter'),
-                                  style:
-                                  const TextStyle(color: Colors.grey),
-                                ),
-                              ),
-                            )
-                          else
-                            Expanded(
-                              child: ListView.builder(
-                                padding: const EdgeInsets.symmetric(
-                                    vertical: 8),
-                                itemCount: filtered.length,
-                                itemBuilder: (context, index) {
-                                  final m = filtered[index];
-                                  return Dismissible(
-                                    key: ValueKey(
-                                        'med_${m.id ?? m.name}_$index'),
-                                    direction:
-                                    DismissDirection.endToStart,
-                                    confirmDismiss: (_) =>
-                                        _confirmDelete(m),
-                                    onDismissed: (_) =>
-                                        _deleteMedicine(m),
-                                    background: Container(
-                                      margin: const EdgeInsets.symmetric(
-                                          horizontal: 16, vertical: 8),
-                                      decoration: BoxDecoration(
-                                          color: Colors.red[50],
-                                          borderRadius:
-                                          BorderRadius.circular(15)),
-                                      alignment: Alignment.centerRight,
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 24),
-                                      child: const Icon(
-                                          Icons.delete_outline,
-                                          color: Colors.red),
-                                    ),
-                                    child: _buildMedicineCard(m, index),
-                                  );
-                                },
-                              ),
-                            ),
-                        ],
-                      );
+                const Divider(height: 1),
+                ...items.map((c) {
+                  final selected = (c == code);
+                  return ListTile(
+                    leading: Text(ls.flagOf(c), style: const TextStyle(fontSize: 22)),
+                    title: Text(ls.displayNameOf(c)),
+                    trailing:
+                    selected ? const Icon(Icons.check, color: Colors.teal) : null,
+                    onTap: () async {
+                      await ls.setLanguage(c);
+                      if (mounted) Navigator.pop(context);
                     },
-                  ),
-                ),
+                  );
+                }),
+                const SizedBox(height: 8),
               ],
-            ),
-          ),
-          floatingActionButton: FloatingActionButton.extended(
-            onPressed: _openAdd,
-            icon: const Icon(Icons.add),
-            label: Text(t('Thêm thuốc', 'Add medicine')),
-          ),
+            );
+          },
         );
       },
     );
   }
-}
-
-// Widget nhỏ hiển thị tĩnh khi chưa có id
-class _MedicineStaticInfo extends StatelessWidget {
-  final String name;
-  final String dosage;
-  final String time;
-  final bool allDone;
-  final String Function(String, String) t;
-
-  const _MedicineStaticInfo({
-    required this.name,
-    required this.dosage,
-    required this.time,
-    required this.allDone,
-    required this.t,
-  });
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(name,
-                  style: const TextStyle(
-                      fontSize: 18, fontWeight: FontWeight.bold)),
+    final L = LanguageService.instance;
+    return ValueListenableBuilder<String>(
+      valueListenable: LanguageService.instance.langCode,
+      builder: (context, lang, _) {
+        return Scaffold(
+          body: CustomScrollView(
+            slivers: [
+              SliverAppBar(
+                pinned: true,
+                floating: true,
+                expandedHeight: 120,
+                flexibleSpace: FlexibleSpaceBar(
+                  titlePadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  title: Row(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.asset(
+                          _homeLogoAsset(context),
+                          width: 36,
+                          height: 36,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Container(
+                            width: 36,
+                            height: 36,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.primary,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(Icons.local_pharmacy,
+                                color: Colors.white, size: 20),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        L.tr('home.title'),
+                        style: TextStyle(
+                          color: Theme.of(context).textTheme.titleLarge?.color,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  centerTitle: false,
+                ),
+                actions: [
+                  IconButton(
+                    tooltip: L.tr('menu.notes'),
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const NotesScreen()),
+                    ),
+                    icon: const Icon(Icons.note_alt_outlined),
+                  ),
+                  IconButton(
+                    tooltip: L.tr('menu.stats'),
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const ComplianceScreen()),
+                    ),
+                    icon: const Icon(Icons.bar_chart_outlined),
+                  ),
+                  PopupMenuButton<String>(
+                    tooltip: t('Thêm', 'More'),
+                    onSelected: (value) async {
+                      if (value == 'export_pdf') {
+                        _exportToPdf();
+                      } else if (value == 'export_csv') {
+                        _exportToCsv();
+                      } else if (value == 'theme') {
+                        ThemeService.instance.toggle();
+                      } else if (value == 'lang') {
+                        _showLanguagePicker(context);
+                      } else if (value == 'logout') {
+                        await _logout();
+                      }
+                    },
+                    itemBuilder: (context) => [
+                      PopupMenuItem(
+                        value: 'export_pdf',
+                        child: Row(
+                          children: [
+                            const Icon(Icons.picture_as_pdf_outlined, color: Colors.red),
+                            const SizedBox(width: 12),
+                            Text(L.tr('menu.export.pdf')),
+                          ],
+                        ),
+                      ),
+                      PopupMenuItem(
+                        value: 'export_csv',
+                        child: Row(
+                          children: [
+                            const Icon(Icons.description_outlined, color: Colors.green),
+                            const SizedBox(width: 12),
+                            Text(L.tr('menu.export.csv')),
+                          ],
+                        ),
+                      ),
+                      const PopupMenuDivider(),
+                      PopupMenuItem(
+                        value: 'theme',
+                        child: Row(
+                          children: [
+                            const Icon(Icons.brightness_6_outlined),
+                            const SizedBox(width: 12),
+                            Text(L.tr('menu.theme')),
+                          ],
+                        ),
+                      ),
+                      PopupMenuItem(
+                        value: 'lang',
+                        child: Row(
+                          children: [
+                            const Icon(Icons.translate_outlined),
+                            const SizedBox(width: 12),
+                            Text(L.tr('menu.lang')),
+                          ],
+                        ),
+                      ),
+                      const PopupMenuDivider(),
+                      PopupMenuItem(
+                        value: 'logout',
+                        child: Row(
+                          children: [
+                            const Icon(Icons.logout, color: Colors.red),
+                            const SizedBox(width: 12),
+                            Text(L.tr('menu.logout'),
+                                style: const TextStyle(color: Colors.red)),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+
+              // search box
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                  child: TextField(
+                    controller: _searchController,
+                    onChanged: _onSearchChanged,
+                    decoration: InputDecoration(
+                      hintText: L.tr('search.hint'),
+                      prefixIcon: const Icon(Icons.search),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(30),
+                        borderSide: BorderSide.none,
+                      ),
+                      filled: true,
+                      fillColor:
+                      Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.6),
+                      contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 20),
+                    ),
+                  ),
+                ),
+              ),
+
+              // filter chips
+              SliverToBoxAdapter(
+                child: StreamBuilder<List<Medicine>>(
+                  stream: _medicineService.getMedicines(),
+                  builder: (context, snapshot) {
+                    if (!snapshot.hasData || (snapshot.data?.isEmpty ?? true)) {
+                      return const SizedBox.shrink();
+                    }
+                    final data = snapshot.data!;
+                    return FutureBuilder<Map<String, List<bool>>>(
+                      future: _calculateAllMissedStatuses(data),
+                      builder: (context, missSnap) {
+                        final missedMap = missSnap.data ?? {};
+                        final taken = data.where((m) => m.taken).length;
+                        final missed = data
+                            .where((m) =>
+                        missedMap[m.id]?.any((b) => b) ?? false)
+                            .length;
+                        final notTaken = data.length - taken;
+
+                        return SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          padding:
+                          const EdgeInsets.symmetric(horizontal: 16),
+                          child: Wrap(
+                            spacing: 8,
+                            children: [
+                              FilterChip(
+                                label: Text(
+                                  "${LanguageService.instance.tMap({'vi':'Tất cả','en':'All'})} (${data.length})",
+                                ),
+                                selected: _filter == MedFilter.all,
+                                onSelected: (_) =>
+                                    setState(() => _filter = MedFilter.all),
+                              ),
+                              FilterChip(
+                                label: Text(
+                                  "${LanguageService.instance.tMap({'vi':'Cần uống','en':'Pending'})} ($notTaken)",
+                                ),
+                                selected: _filter == MedFilter.notTaken,
+                                onSelected: (_) => setState(
+                                        () => _filter = MedFilter.notTaken),
+                              ),
+                              FilterChip(
+                                label: Text(
+                                  "${LanguageService.instance.tMap({'vi':'Bỏ lỡ','en':'Missed'})} ($missed)",
+                                ),
+                                selected: _filter == MedFilter.missed,
+                                selectedColor: Colors.red.shade200,
+                                onSelected: (_) =>
+                                    setState(() => _filter = MedFilter.missed),
+                              ),
+                              FilterChip(
+                                label: Text(
+                                  "${LanguageService.instance.tMap({'vi':'Hoàn thành','en':'Done'})} ($taken)",
+                                ),
+                                selected: _filter == MedFilter.taken,
+                                onSelected: (_) =>
+                                    setState(() => _filter = MedFilter.taken),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+
+              // list
+              StreamBuilder<List<Medicine>>(
+                stream: _medicineService.getMedicines(),
+                builder: (context, medSnap) {
+                  if (medSnap.connectionState == ConnectionState.waiting) {
+                    return const SliverFillRemaining(
+                        child: Center(child: CircularProgressIndicator()));
+                  }
+                  if (medSnap.hasError) {
+                    return SliverFillRemaining(
+                      child: Center(
+                          child: Text(t('Lỗi tải dữ liệu', 'Error loading data'))),
+                    );
+                  }
+                  final all = medSnap.data ?? [];
+                  if (all.isEmpty) return _buildEmptySliver();
+
+                  return FutureBuilder<Map<String, List<bool>>>(
+                    future: _calculateAllMissedStatuses(all),
+                    builder: (context, missSnap) {
+                      final missedMap = missSnap.data ?? {};
+                      final filtered = _filterMedicines(all, missedMap);
+
+                      if (filtered.isEmpty) {
+                        return SliverFillRemaining(
+                          child: Center(
+                            child: Text(
+                              LanguageService.instance.tMap({
+                                'vi': 'Không tìm thấy thuốc nào',
+                                'en': 'No medicines found'
+
+                              }),
+                              style: const TextStyle(color: Colors.grey),
+                            ),
+                          ),
+                        );
+                      }
+
+                      return SliverPadding(
+                        padding: const EdgeInsets.only(top: 8, bottom: 80),
+                        sliver: SliverList(
+                          delegate: SliverChildBuilderDelegate(
+                                (context, i) =>
+                                _buildMedicineCard(filtered[i], i, filtered.length),
+                            childCount: filtered.length,
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+            ],
+          ),
+          floatingActionButton: FloatingActionButton(
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const AddMedicineScreen()),
             ),
-            if (allDone)
-              const Icon(Icons.verified, color: Colors.green, size: 20),
-          ],
-        ),
-        const SizedBox(height: 6),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-          decoration: BoxDecoration(
-            color: Colors.orange.withOpacity(0.15),
-            borderRadius: BorderRadius.circular(8),
+            tooltip:
+            LanguageService.instance.tMap({'vi': 'Thêm thuốc', 'en': 'Add Medicine', 'jp': 'alolo'}),
+            child: const Icon(Icons.add),
           ),
-          child: Text(
-            dosage,
-            style: TextStyle(color: Colors.orange[800], fontWeight: FontWeight.w600),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Icon(Icons.access_time, size: 16, color: Colors.grey[600]),
-            const SizedBox(width: 6),
-            Text(t("Uống lúc: $time", "Time: $time"),
-                style: const TextStyle(color: Colors.black54)),
-          ],
-        ),
-      ],
+        );
+      },
     );
   }
 }

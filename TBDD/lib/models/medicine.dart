@@ -1,13 +1,14 @@
+// lib/models/medicine.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class Medicine {
   final String? id;
   final String name;
   final String dosage;
-  final String time;       // "HH:mm"
-  final String type;       // ví dụ: Viên nén
-  final String frequency;  // ví dụ: Hàng ngày
-  final bool taken;        // ✅ đã uống hay chưa (đơn giản)
+  final String time;
+  final String type;
+  final String frequency;
+  final bool taken;
   final Timestamp? createdAt;
 
   const Medicine({
@@ -58,6 +59,7 @@ class Medicine {
     String? frequency,
     bool? taken,
     Timestamp? createdAt,
+    List<String>? days, // 👈 THÊM TRƯỜNG NÀY
   }) {
     return Medicine(
       id: id ?? this.id,
