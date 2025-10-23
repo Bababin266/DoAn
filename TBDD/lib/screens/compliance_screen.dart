@@ -1,5 +1,3 @@
-// lib/screens/compliance_screen.dart
-
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:table_calendar/table_calendar.dart';
@@ -7,7 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../services/medicine_service.dart';
 import '../services/language_service.dart';
-import '../models/compliance_data.dart'; // Sẽ tạo file này ở bước tiếp theo
+import '../models/compliance_data.dart';
 
 class ComplianceScreen extends StatefulWidget {
   const ComplianceScreen({super.key});
@@ -20,17 +18,13 @@ class _ComplianceScreenState extends State<ComplianceScreen> {
   final MedicineService _medicineService = MedicineService();
   final PageController _pageController = PageController();
 
-  // Dữ liệu tuân thủ cho biểu đồ
   final Map<int, double> _weeklyCompliance = {};
   bool _isLoadingChart = true;
 
-  // Dữ liệu cho lịch
   final Map<DateTime, List<ComplianceData>> _complianceEvents = {};
   DateTime _focusedDay = DateTime.now();
   DateTime _selectedDay = DateTime.now();
   bool _isLoadingCalendar = true;
-
-  String t(String vi, String en) => LanguageService.instance.isVietnamese.value ? vi : en;
 
   @override
   void initState() {
@@ -39,51 +33,82 @@ class _ComplianceScreenState extends State<ComplianceScreen> {
     _fetchCalendarDataForMonth(_focusedDay);
   }
 
+  // Map ngôn ngữ → locale cho Calendar/DateFormat
+  String _calendarLocale(String code) {
+    switch (code) {
+      case 'vi':
+        return 'vi_VN';
+      case 'en':
+        return 'en_US';
+      case 'ja':
+        return 'ja_JP';
+      case 'ko':
+        return 'ko_KR';
+      case 'fr':
+        return 'fr_FR';
+      case 'es':
+        return 'es_ES';
+      case 'de':
+        return 'de_DE';
+      case 'zh-Hans':
+        return 'zh_CN';
+      case 'zh-Hant':
+        return 'zh_TW';
+      case 'ru':
+        return 'ru_RU';
+      case 'ar':
+        return 'ar_SA';
+      case 'hi':
+        return 'hi_IN';
+      case 'th':
+        return 'th_TH';
+      case 'id':
+        return 'id_ID';
+      case 'tr':
+        return 'tr_TR';
+      default:
+        return 'en_US';
+    }
+  }
+
   Future<void> _fetchChartData() async {
     setState(() => _isLoadingChart = true);
     final now = DateTime.now();
-    // Lấy dữ liệu 7 ngày qua
     for (int i = 6; i >= 0; i--) {
       final day = now.subtract(Duration(days: i));
       final compliance = await _medicineService.getComplianceForDay(day);
-      // Dùng timestamp làm key để đảm bảo không bị trùng lặp
       _weeklyCompliance[day.millisecondsSinceEpoch] = compliance;
     }
-    if (mounted) {
-      setState(() => _isLoadingChart = false);
-    }
+    if (mounted) setState(() => _isLoadingChart = false);
   }
 
   Future<void> _fetchCalendarDataForMonth(DateTime month) async {
     setState(() => _isLoadingCalendar = true);
     final data = await _medicineService.getComplianceForMonth(month);
-    _complianceEvents.clear();
-    _complianceEvents.addAll(data);
-
-    if (mounted) {
-      setState(() => _isLoadingCalendar = false);
-    }
+    _complianceEvents
+      ..clear()
+      ..addAll(data);
+    if (mounted) setState(() => _isLoadingCalendar = false);
   }
 
   List<ComplianceData> _getEventsForDay(DateTime day) {
-    // `isSameDay` từ table_calendar rất quan trọng để so sánh ngày mà không tính đến giờ
     return _complianceEvents[DateTime(day.year, day.month, day.day)] ?? [];
   }
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder<bool>(
-      valueListenable: LanguageService.instance.isVietnamese,
-      builder: (context, isVietnamese, _) {
+    final L = LanguageService.instance;
+    return ValueListenableBuilder<String>(
+      valueListenable: L.langCode,
+      builder: (_, code, __) {
+        final calLocale = _calendarLocale(code);
         return Scaffold(
-          appBar: AppBar(
-            title: Text(t('Thống kê Tuân thủ', 'Compliance Statistics')),
-          ),
+          appBar: AppBar(title: Text(L.tr('stats.title'))),
           body: PageView(
             controller: _pageController,
             children: [
-              _buildChartView(isVietnamese),
-              _buildCalendarView(isVietnamese),
+              _buildChartView(L, calLocale),
+              _buildCalendarView(L, calLocale),
             ],
           ),
         );
@@ -91,31 +116,24 @@ class _ComplianceScreenState extends State<ComplianceScreen> {
     );
   }
 
-  // Giao diện Biểu đồ
-  Widget _buildChartView(bool isVietnamese) {
+  Widget _buildChartView(LanguageService L, String calLocale) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            t('Tuân thủ trong 7 ngày qua', 'Compliance Over Last 7 Days'),
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
+          Text(L.tr('stats.last7'), style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: 24),
           _isLoadingChart
               ? const Center(child: CircularProgressIndicator())
-              : SizedBox(
-            height: 250,
-            child: BarChart(_buildBarChartData(isVietnamese)),
-          ),
+              : SizedBox(height: 250, child: BarChart(_buildBarChartData(L, calLocale))),
           const SizedBox(height: 24),
-          _buildSummaryCard(),
+          _buildSummaryCard(L),
           const SizedBox(height: 24),
           Center(
             child: TextButton.icon(
               icon: const Icon(Icons.arrow_forward_ios, size: 16),
-              label: Text(t('Xem Lịch sử Chi tiết', 'View Full History')),
+              label: Text(L.tr('stats.viewHistory')),
               onPressed: () {
                 _pageController.animateToPage(
                   1,
@@ -124,18 +142,17 @@ class _ComplianceScreenState extends State<ComplianceScreen> {
                 );
               },
             ),
-          )
+          ),
         ],
       ),
     );
   }
 
-  // Giao diện Lịch
-  Widget _buildCalendarView(bool isVietnamese) {
+  Widget _buildCalendarView(LanguageService L, String calLocale) {
     return Column(
       children: [
         TableCalendar<ComplianceData>(
-          locale: isVietnamese ? 'vi_VN' : 'en_US',
+          locale: calLocale,
           firstDay: DateTime.utc(2022, 1, 1),
           lastDay: DateTime.now().add(const Duration(days: 365)),
           focusedDay: _focusedDay,
@@ -156,24 +173,16 @@ class _ComplianceScreenState extends State<ComplianceScreen> {
           calendarBuilders: CalendarBuilders(
             markerBuilder: (context, day, events) {
               if (events.isEmpty) return null;
-              final compliance = events.first.compliance; // Chỉ cần 1 event để lấy màu
-              Color markerColor;
-              if (compliance >= 1.0) {
-                markerColor = Colors.green; // 100%
-              } else if (compliance > 0.5) {
-                markerColor = Colors.orange; // >50%
-              } else {
-                markerColor = Colors.red; // <=50%
-              }
+              final compliance = events.first.compliance;
+              final markerColor = compliance >= 1.0
+                  ? Colors.green
+                  : (compliance > 0.5 ? Colors.orange : Colors.red);
               return Positioned(
                 bottom: 1,
                 child: Container(
                   width: 7,
                   height: 7,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: markerColor,
-                  ),
+                  decoration: BoxDecoration(shape: BoxShape.circle, color: markerColor),
                 ),
               );
             },
@@ -187,77 +196,75 @@ class _ComplianceScreenState extends State<ComplianceScreen> {
         Expanded(
           child: _isLoadingCalendar
               ? const Center(child: CircularProgressIndicator())
-              : _buildEventList(),
+              : _buildEventList(L, calLocale),
         ),
       ],
     );
   }
 
-  // Danh sách ghi chú chi tiết khi chọn 1 ngày trên lịch
-  Widget _buildEventList() {
+  Widget _buildEventList(LanguageService L, String calLocale) {
     final events = _getEventsForDay(_selectedDay);
     if (events.isEmpty) {
-      return Center(
-        child: Text(t('Không có dữ liệu cho ngày này', 'No data for this day')),
-      );
+      return Center(child: Text(L.tr('stats.noDataDay')));
     }
     final data = events.first;
+    final dateStr = DateFormat.yMd(calLocale).format(_selectedDay);
+
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        Text(
-          t('Chi tiết ngày ', 'Details for ') + DateFormat.yMd(LanguageService.instance.isVietnamese.value ? 'vi_VN' : 'en_US').format(_selectedDay),
-          style: Theme.of(context).textTheme.titleLarge,
-        ),
+        Text(L.tr('stats.detailsFor') + dateStr, style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: 16),
         ListTile(
           leading: const Icon(Icons.check_circle, color: Colors.green),
-          title: Text(t('Liều đã uống', 'Doses Taken')),
+          title: Text(L.tr('stats.dosesTaken')),
           trailing: Text('${data.dosesTaken}', style: const TextStyle(fontSize: 16)),
         ),
         ListTile(
           leading: const Icon(Icons.cancel, color: Colors.red),
-          title: Text(t('Liều đã bỏ lỡ', 'Doses Missed')),
+          title: Text(L.tr('stats.dosesMissed')),
           trailing: Text('${data.dosesMissed}', style: const TextStyle(fontSize: 16)),
         ),
         ListTile(
           leading: const Icon(Icons.pie_chart, color: Colors.blue),
-          title: Text(t('Tỷ lệ tuân thủ', 'Compliance Rate')),
-          trailing: Text('${(data.compliance * 100).toStringAsFixed(0)}%', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          title: Text(L.tr('stats.rate')),
+          trailing: Text('${(data.compliance * 100).toStringAsFixed(0)}%',
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
         ),
       ],
     );
   }
 
-  // Tính toán dữ liệu tổng hợp
-  Widget _buildSummaryCard() {
+  Widget _buildSummaryCard(LanguageService L) {
     if (_weeklyCompliance.isEmpty) return const SizedBox.shrink();
-    final totalDoses = _weeklyCompliance.length; // Giả sử 1 liều/ngày
+    final totalDoses = _weeklyCompliance.length;
     final takenDoses = _weeklyCompliance.values.where((c) => c > 0).length;
     final average = (takenDoses / totalDoses * 100).toStringAsFixed(1);
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(16),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
             Column(
               children: [
-                Text(t('Tổng liều', 'Total Doses'), style: const TextStyle(color: Colors.grey)),
+                Text(L.tr('stats.total'), style: const TextStyle(color: Colors.grey)),
                 Text('$totalDoses', style: Theme.of(context).textTheme.titleLarge),
               ],
             ),
             Column(
               children: [
-                Text(t('Đã uống', 'Taken'), style: const TextStyle(color: Colors.grey)),
-                Text('$takenDoses', style: Theme.of(context).textTheme.titleLarge?.copyWith(color: Colors.green)),
+                Text(L.tr('stats.taken'), style: const TextStyle(color: Colors.grey)),
+                Text('$takenDoses',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(color: Colors.green)),
               ],
             ),
             Column(
               children: [
-                Text(t('Trung bình', 'Average'), style: const TextStyle(color: Colors.grey)),
-                Text('$average%', style: Theme.of(context).textTheme.titleLarge?.copyWith(color: Colors.blue)),
+                Text(L.tr('stats.average'), style: const TextStyle(color: Colors.grey)),
+                Text('$average%',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(color: Colors.blue)),
               ],
             ),
           ],
@@ -266,23 +273,22 @@ class _ComplianceScreenState extends State<ComplianceScreen> {
     );
   }
 
-  // Hàm tạo dữ liệu cho BarChart
-  BarChartData _buildBarChartData(bool isVietnamese) {
+  BarChartData _buildBarChartData(LanguageService L, String calLocale) {
     final sortedEntries = _weeklyCompliance.entries.toList()
       ..sort((a, b) => a.key.compareTo(b.key));
+
+    String dayLabel(DateTime d) => DateFormat.E(calLocale).format(d).substring(0, 1);
 
     return BarChartData(
       alignment: BarChartAlignment.spaceAround,
       barTouchData: BarTouchData(
         touchTooltipData: BarTouchTooltipData(
-          getTooltipItem: (group, groupIndex, rod, rodIndex) {
-            final day = DateTime.fromMillisecondsSinceEpoch(sortedEntries[groupIndex].key);
-            final dayOfWeek = DateFormat.E(isVietnamese ? 'vi_VN' : 'en_US').format(day);
+          getTooltipItem: (group, i, rod, __) {
+            final day = DateTime.fromMillisecondsSinceEpoch(sortedEntries[i].key);
+            final dayOfWeek = DateFormat.E(calLocale).format(day);
             final compliance = (rod.toY * 100).toStringAsFixed(0);
-            return BarTooltipItem(
-              '$dayOfWeek\n$compliance%',
-              const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-            );
+            return BarTooltipItem('$dayOfWeek\n$compliance%',
+                const TextStyle(color: Colors.white, fontWeight: FontWeight.bold));
           },
         ),
       ),
@@ -292,11 +298,9 @@ class _ComplianceScreenState extends State<ComplianceScreen> {
           sideTitles: SideTitles(
             showTitles: true,
             getTitlesWidget: (value, meta) {
-              final day = DateTime.fromMillisecondsSinceEpoch(sortedEntries[value.toInt()].key);
-              return SideTitleWidget(
-                axisSide: meta.axisSide,
-                child: Text(DateFormat.E(isVietnamese ? 'vi_VN' : 'en_US').format(day).substring(0,1)),
-              );
+              final idx = value.toInt().clamp(0, sortedEntries.length - 1);
+              final day = DateTime.fromMillisecondsSinceEpoch(sortedEntries[idx].key);
+              return SideTitleWidget(axisSide: meta.axisSide, child: Text(dayLabel(day)));
             },
             reservedSize: 28,
           ),
@@ -305,12 +309,12 @@ class _ComplianceScreenState extends State<ComplianceScreen> {
           sideTitles: SideTitles(
             showTitles: true,
             getTitlesWidget: (value, meta) {
-              if (value == 0) return const Text('0%');
-              if (value == 0.5) return const Text('50%');
-              if (value == 1) return const Text('100%');
+              if (value == 0) return Text(L.tr('stats.axis0'));
+              if (value == 0.5) return Text(L.tr('stats.axis50'));
+              if (value == 1) return Text(L.tr('stats.axis100'));
               return const Text('');
             },
-            reservedSize: 32,
+            reservedSize: 36,
           ),
         ),
         topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
@@ -325,7 +329,9 @@ class _ComplianceScreenState extends State<ComplianceScreen> {
           barRods: [
             BarChartRodData(
               toY: compliance,
-              color: compliance >= 0.9 ? Colors.green : (compliance > 0.5 ? Colors.orange : Colors.red),
+              color: compliance >= 0.9
+                  ? Colors.green
+                  : (compliance > 0.5 ? Colors.orange : Colors.red),
               width: 16,
               borderRadius: BorderRadius.circular(4),
             ),
@@ -333,12 +339,11 @@ class _ComplianceScreenState extends State<ComplianceScreen> {
         );
       }).toList(),
       gridData: FlGridData(
-          show: true,
-          drawVerticalLine: false,
-          horizontalInterval: 0.5,
-          getDrawingHorizontalLine: (value) {
-            return const FlLine(color: Colors.grey, strokeWidth: 0.5, dashArray: [5, 5]);
-          }
+        show: true,
+        drawVerticalLine: false,
+        horizontalInterval: 0.5,
+        getDrawingHorizontalLine: (_) =>
+        const FlLine(color: Colors.grey, strokeWidth: 0.5, dashArray: [5, 5]),
       ),
     );
   }

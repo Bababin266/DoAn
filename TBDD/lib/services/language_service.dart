@@ -1,196 +1,167 @@
-// lib/services/language_service.dart
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/material.dart';
 
+/// Simple i18n service for app-wide translations.
+/// - Đổi ngôn ngữ bằng [setLanguage] → rebuild toàn app.
+/// - Tự load file JSON từ assets/i18n.
+/// - Fallback sang en.json nếu thiếu key hoặc file.
 class LanguageService {
   LanguageService._();
   static final LanguageService instance = LanguageService._();
 
-  static const _prefsKey = 'lang_code';
-  static const _assetListPath = 'assets/i18n/_list.txt';
-  static const _assetDir = 'assets/i18n';
+  static const _prefsKey = 'app.langCode';
+  static const _dir = 'assets/i18n';
+  static const _listFile = '$_dir/_list.txt';
 
-  /// Danh sách mã (vd: en, vi, ja, ko, fr, zh-Hans...)
-  final ValueNotifier<List<String>> supported = ValueNotifier<List<String>>([]);
+  final ValueNotifier<String> langCode = ValueNotifier('en');
+  final ValueNotifier<bool> isVietnamese = ValueNotifier(false);
+  final ValueNotifier<List<String>> supported = ValueNotifier([]);
 
-  /// Mã hiện tại (vd: 'vi')
-  final ValueNotifier<String> langCode = ValueNotifier<String>('vi');
+  Map<String, dynamic> _bundle = {};
+  Map<String, dynamic> _bundleEn = {};
 
-  /// Tương thích ngược: true nếu 'vi'
-  final ValueNotifier<bool> isVietnamese = ValueNotifier<bool>(true);
-
-  /// Bảng dịch: langCode -> {key: value}
-  final Map<String, Map<String, String>> _bundles = {};
-
+  /// Khởi tạo: đọc danh sách ngôn ngữ + chọn locale mặc định (hoặc từ device)
   Future<void> init({Locale? deviceLocale}) async {
-    // 1) load danh sách ngôn ngữ
-    final listRaw = await rootBundle.loadString(_assetListPath);
-    final codes = listRaw
-        .split(RegExp(r'\r?\n'))
+    final prefs = await SharedPreferences.getInstance();
+    final saved = prefs.getString(_prefsKey);
+
+    final rawList = await rootBundle.loadString(_listFile);
+    final codes = rawList
+        .split('\n')
         .map((e) => e.trim())
         .where((e) => e.isNotEmpty && !e.startsWith('#'))
         .toList();
-    supported.value = codes;
 
-    // 2) load tất cả file json
-    for (final code in codes) {
-      final path = '$_assetDir/$code.json';
+    final available = <String>[];
+    for (final c in codes) {
       try {
-        final s = await rootBundle.loadString(path);
-        final map = Map<String, dynamic>.from(json.decode(s));
-        _bundles[code] = map.map((k, v) => MapEntry(k, v.toString()));
-      } catch (_) {
-        _bundles[code] = {};
+        await rootBundle.loadString('$_dir/$c.json');
+        available.add(c);
+      } catch (_) {}
+    }
+    if (available.isEmpty) available.add('en');
+    supported.value = available;
+
+    // Load fallback EN
+    _bundleEn = await _loadJsonSafe('en');
+
+    String initial = 'en';
+    if (saved != null && available.contains(saved)) {
+      initial = saved;
+    } else if (deviceLocale != null) {
+      final deviceTag = deviceLocale.toLanguageTag();
+      final short = deviceLocale.languageCode;
+      if (available.contains(deviceTag)) {
+        initial = deviceTag;
+      } else if (available.contains(short)) {
+        initial = short;
+      } else if (available.contains('vi')) {
+        initial = 'vi';
       }
     }
+    await setLanguage(initial, persist: true);
+  }
 
-    // 3) chọn ngôn ngữ ban đầu: đã lưu → theo máy → 'vi'
-    final prefs = await SharedPreferences.getInstance();
-    final saved = prefs.getString(_prefsKey);
-    String start = saved ??
-        (deviceLocale?.toLanguageTag() ?? deviceLocale?.languageCode) ??
-        'vi';
-
-    // Nếu mã đầy đủ không có, thử rút gọn (e.g. 'pt-BR' -> 'pt')
-    if (!_bundles.containsKey(start) && start.contains('-')) {
-      final short = start.split('-').first;
-      if (_bundles.containsKey(short)) start = short;
+  /// Đổi ngôn ngữ + notify toàn app
+  Future<void> setLanguage(String code, {bool persist = true}) async {
+    if (!supported.value.contains(code)) {
+      code = supported.value.contains('en') ? 'en' : supported.value.first;
     }
-    if (!_bundles.containsKey(start)) start = 'vi';
+    _bundle = await _loadJsonSafe(code);
+    langCode.value = code;
+    isVietnamese.value = (code == 'vi');
 
-    await setLanguage(start);
-  }
-
-  Future<void> setLanguage(String code) async {
-    String picked = code;
-    if (!_bundles.containsKey(picked)) {
-      // thử rút gọn
-      if (picked.contains('-')) {
-        final short = picked.split('-').first;
-        if (_bundles.containsKey(short)) picked = short;
-      }
+    if (persist) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_prefsKey, code);
     }
-    if (!_bundles.containsKey(picked)) picked = 'vi';
-
-    langCode.value = picked;
-    isVietnamese.value = (picked == 'vi');
-
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_prefsKey, picked);
   }
 
-  Future<void> cycleLanguage() async {
-    final list = supported.value;
-    final idx = list.indexOf(langCode.value);
-    final next = list[(idx + 1) % list.length];
-    await setLanguage(next);
-  }
-
-  /// Dịch theo key: ưu tiên lang hiện tại -> rút gọn -> 'en' -> 'vi' -> key.
-  String tr(String key, {Map<String, String>? params}) {
-    String? v = _resolve(key);
-    v ??= key;
-    if (params != null && params.isNotEmpty) {
-      params.forEach((k, p) {
-        v = v!.replaceAll('{$k}', p);
-      });
-    }
-    return v!;
-  }
-
-  /// Giữ API cũ: t(vi, en). Nếu lang khác vi/en -> ưu tiên en.
-  String t(String vi, String en) {
-    final code = langCode.value;
-    if (code == 'vi') return vi;
-    if (code == 'en') return en;
-    return en;
-  }
-
-  /// Dịch theo map (đa ngôn ngữ nhanh)
-  String tMap(Map<String, String> byCode, {String? fallback}) {
-    final code = langCode.value;
-    if (byCode.containsKey(code)) return byCode[code]!;
-    // nếu code dài (pt-BR), thử rút gọn
-    if (code.contains('-')) {
-      final short = code.split('-').first;
-      if (byCode.containsKey(short)) return byCode[short]!;
-    }
-    if (byCode.containsKey('en')) return byCode['en']!;
-    if (byCode.containsKey('vi')) return byCode['vi']!;
-    return fallback ?? byCode.values.first;
-  }
-
-  /// supported -> List<Locale> cho MaterialApp
+  /// Trả về danh sách locale cho MaterialApp
   List<Locale> supportedLocales() {
-    return supported.value.map((c) {
+    return supported.value
+        .map((c) {
       if (c.contains('-')) {
         final parts = c.split('-');
-        return Locale.fromSubtags(languageCode: parts.first, scriptCode: parts.length == 3 ? parts[1] : null, countryCode: parts.last);
+        return Locale(parts[0], parts[1]);
       }
       return Locale(c);
-    }).toList();
+    })
+        .toList();
   }
 
-  String? _resolve(String key) {
-    final code = langCode.value;
-    String? v = _bundles[code]?[key];
-    if (v != null) return v;
-
-    // thử rút gọn
-    if (code.contains('-')) {
-      final short = code.split('-').first;
-      v = _bundles[short]?[key];
-      if (v != null) return v;
+  /// Dịch key → string (fallback sang en.json hoặc chính key)
+  String tr(String key, {Map<String, String>? params, String? fallback}) {
+    String? value = _stringForKey(key, _bundle) ??
+        _stringForKey(key, _bundleEn) ??
+        fallback ??
+        key;
+    if (params != null) {
+      params.forEach((k, v) {
+        value = value!.replaceAll('{$k}', v);
+      });
     }
-
-    // fallback en -> vi
-    v = _bundles['en']?[key];
-    v ??= _bundles['vi']?[key];
-    return v;
+    return value!;
   }
 
+  // ====== Helper ======
+  Future<Map<String, dynamic>> _loadJsonSafe(String code) async {
+    try {
+      final s = await rootBundle.loadString('$_dir/$code.json');
+      return json.decode(s);
+    } catch (_) {
+      return {};
+    }
+  }
+
+  String? _stringForKey(String key, Map<String, dynamic> map) {
+    dynamic cur = map;
+    for (final part in key.split('.')) {
+      if (cur is Map && cur.containsKey(part)) {
+        cur = cur[part];
+      } else {
+        return null;
+      }
+    }
+    return cur is String ? cur : null;
+  }
+
+  /// Hiển thị tên ngôn ngữ
   String displayNameOf(String code) {
-    switch (code) {
-      case 'vi': return 'Tiếng Việt';
-      case 'en': return 'English';
-      case 'ja': return '日本語';
-      case 'ko': return '한국어';
-      case 'fr': return 'Français';
-      case 'es': return 'Español';
-      case 'de': return 'Deutsch';
-      case 'zh-Hans': return '简体中文';
-      case 'zh-Hant': return '繁體中文';
-      case 'ru': return 'Русский';
-      case 'ar': return 'العربية';
-      case 'hi': return 'हिन्दी';
-      case 'th': return 'ไทย';
-      case 'id': return 'Bahasa Indonesia';
-      case 'tr': return 'Türkçe';
-      default: return code;
-    }
+    const names = {
+      'en': 'English',
+      'vi': 'Tiếng Việt',
+      'ja': '日本語',
+      'ko': '한국어',
+      'fr': 'Français',
+      'es': 'Español',
+      'de': 'Deutsch',
+      'id': 'Bahasa Indonesia',
+      'tr': 'Türkçe',
+      'zh-Hans': '简体中文',
+      'zh-Hant': '繁體中文',
+    };
+    return names[code] ?? code;
   }
 
+  /// Cờ emoji hiển thị trong LanguagePicker
   String flagOf(String code) {
-    switch (code) {
-      case 'vi': return '🇻🇳';
-      case 'en': return '🇺🇸';
-      case 'ja': return '🇯🇵';
-      case 'ko': return '🇰🇷';
-      case 'fr': return '🇫🇷';
-      case 'es': return '🇪🇸';
-      case 'de': return '🇩🇪';
-      case 'zh-Hans': return '🇨🇳';
-      case 'zh-Hant': return '🇹🇼';
-      case 'ru': return '🇷🇺';
-      case 'ar': return '🇦🇪';
-      case 'hi': return '🇮🇳';
-      case 'th': return '🇹🇭';
-      case 'id': return '🇮🇩';
-      case 'tr': return '🇹🇷';
-      default: return '🌐';
-    }
+    const flags = {
+      'en': '🇺🇸',
+      'vi': '🇻🇳',
+      'ja': '🇯🇵',
+      'ko': '🇰🇷',
+      'fr': '🇫🇷',
+      'es': '🇪🇸',
+      'de': '🇩🇪',
+      'id': '🇮🇩',
+      'tr': '🇹🇷',
+      'zh-Hans': '🇨🇳',
+      'zh-Hant': '🇹🇼',
+    };
+    return flags[code] ?? '🌐';
   }
 }

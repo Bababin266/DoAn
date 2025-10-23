@@ -3,7 +3,8 @@ import 'package:collection/collection.dart';
 import 'package:intl/intl.dart';
 
 import '../models/note.dart';
-import '../services/note_service.dart';import '../services/language_service.dart'; // 👈 THÊM IMPORT
+import '../services/note_service.dart';
+import '../services/language_service.dart';
 import 'add_edit_note_screen.dart';
 
 class NotesScreen extends StatefulWidget {
@@ -16,23 +17,42 @@ class NotesScreen extends StatefulWidget {
 class _NotesScreenState extends State<NotesScreen> {
   final NoteService _noteService = NoteService();
 
-  // 👈 THÊM CÁC HÀM ĐA NGÔN NGỮ
-  String t(String vi, String en) =>
-      LanguageService.instance.isVietnamese.value ? vi : en;
-
-  void _toggleLanguage() {
-    final ln = LanguageService.instance.isVietnamese;
-    ln.value = !ln.value;
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(ln.value ? 'Đã chuyển sang Tiếng Việt' : 'Switched to English'),
-          duration: const Duration(milliseconds: 1200),
-        ),
-      );
+  String _calendarLocale(String code) {
+    switch (code) {
+      case 'vi':
+        return 'vi_VN';
+      case 'en':
+        return 'en_US';
+      case 'ja':
+        return 'ja_JP';
+      case 'ko':
+        return 'ko_KR';
+      case 'fr':
+        return 'fr_FR';
+      case 'es':
+        return 'es_ES';
+      case 'de':
+        return 'de_DE';
+      case 'zh-Hans':
+        return 'zh_CN';
+      case 'zh-Hant':
+        return 'zh_TW';
+      case 'ru':
+        return 'ru_RU';
+      case 'ar':
+        return 'ar_SA';
+      case 'hi':
+        return 'hi_IN';
+      case 'th':
+        return 'th_TH';
+      case 'id':
+        return 'id_ID';
+      case 'tr':
+        return 'tr_TR';
+      default:
+        return 'en_US';
     }
   }
-  // --- KẾT THÚC PHẦN THÊM MỚI ---
 
   void _navigateToAddEditNote([Note? note]) {
     Navigator.push(
@@ -43,23 +63,15 @@ class _NotesScreenState extends State<NotesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // 👈 BỌC SCAFFOLD BẰNG VALUELISTENABLEBUILDER
-    return ValueListenableBuilder<bool>(
-      valueListenable: LanguageService.instance.isVietnamese,
-      builder: (context, isVietnamese, _) {
+    final L = LanguageService.instance;
+    return ValueListenableBuilder<String>(
+      valueListenable: L.langCode,
+      builder: (_, code, __) {
+        final loc = _calendarLocale(code);
         return Scaffold(
           appBar: AppBar(
-            // 👈 CẬP NHẬT TIÊU ĐỀ
-            title: Text(t('Ghi chú sức khỏe', 'Health Notes')),
+            title: Text(L.tr('notes.appbar')),
             elevation: 1,
-            // 👈 THÊM NÚT ĐỔI NGÔN NGỮ
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.language),
-                tooltip: t('Đổi ngôn ngữ', 'Change language'),
-                onPressed: _toggleLanguage,
-              ),
-            ],
           ),
           body: StreamBuilder<List<Note>>(
             stream: _noteService.getNotes(),
@@ -68,11 +80,9 @@ class _NotesScreenState extends State<NotesScreen> {
                 return const Center(child: CircularProgressIndicator());
               }
               if (snapshot.hasError) {
-                // 👈 CẬP NHẬT THÔNG BÁO LỖI
-                return Center(child: Text('${t('Lỗi', 'Error')}: ${snapshot.error}'));
+                return Center(child: Text('${L.tr('error.generic')}: ${snapshot.error}'));
               }
               final notes = snapshot.data ?? [];
-
               if (notes.isEmpty) {
                 return Center(
                   child: Column(
@@ -80,28 +90,27 @@ class _NotesScreenState extends State<NotesScreen> {
                     children: [
                       const Icon(Icons.note_alt_outlined, size: 80, color: Colors.grey),
                       const SizedBox(height: 16),
-                      // 👈 CẬP NHẬT VĂN BẢN
-                      Text(
-                        t('Chưa có ghi chú nào', 'No notes yet'),
-                        style: const TextStyle(fontSize: 18, color: Colors.grey),
-                      ),
+                      Text(L.tr('notes.empty'),
+                          style: const TextStyle(fontSize: 18, color: Colors.grey)),
                     ],
                   ),
                 );
               }
 
-              // Nhóm các ghi chú theo ngày
-              final groupedNotes = groupBy(notes, (Note note) => DateFormat('yyyy-MM-dd').format(note.date.toDate()));
-              final sortedKeys = groupedNotes.keys.toList()..sort((a, b) => b.compareTo(a));
+              final grouped = groupBy(
+                notes,
+                    (Note n) => DateFormat('yyyy-MM-dd').format(n.date.toDate()),
+              );
+              final keys = grouped.keys.toList()..sort((a, b) => b.compareTo(a));
 
               return ListView.builder(
-                padding: const EdgeInsets.all(8.0),
-                itemCount: sortedKeys.length,
-                itemBuilder: (context, index) {
-                  final dateKey = sortedKeys[index];
-                  final notesForDate = groupedNotes[dateKey]!;
-                  // 👈 CẬP NHẬT ĐỊNH DẠNG NGÀY THÁNG ĐA NGÔN NGỮ
-                  final displayDate = DateFormat.yMMMMEEEEd(isVietnamese ? 'vi_VN' : 'en_US').format(notesForDate.first.date.toDate());
+                padding: const EdgeInsets.all(8),
+                itemCount: keys.length,
+                itemBuilder: (_, idx) {
+                  final dateKey = keys[idx];
+                  final notesForDate = grouped[dateKey]!;
+                  final displayDate =
+                  DateFormat.yMMMMEEEEd(loc).format(notesForDate.first.date.toDate());
 
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -110,11 +119,14 @@ class _NotesScreenState extends State<NotesScreen> {
                         padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
                         child: Text(
                           displayDate,
-                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.blueGrey),
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.blueGrey,
+                          ),
                         ),
                       ),
-                      // 👈 TRUYỀN HÀM t() VÀO WIDGET CON
-                      ...notesForDate.map((note) => _buildNoteCard(note, t, isVietnamese)),
+                      ...notesForDate.map((n) => _buildNoteCard(n, L, loc)),
                     ],
                   );
                 },
@@ -123,8 +135,7 @@ class _NotesScreenState extends State<NotesScreen> {
           ),
           floatingActionButton: FloatingActionButton.extended(
             onPressed: () => _navigateToAddEditNote(),
-            // 👈 CẬP NHẬT LABEL
-            label: Text(t('Thêm ghi chú', 'Add Note')),
+            label: Text(L.tr('notes.add')),
             icon: const Icon(Icons.add),
           ),
         );
@@ -132,8 +143,7 @@ class _NotesScreenState extends State<NotesScreen> {
     );
   }
 
-  // 👈 THÊM THAM SỐ CHO HÀM _buildNoteCard
-  Widget _buildNoteCard(Note note, String Function(String, String) t, bool isVietnamese) {
+  Widget _buildNoteCard(Note note, LanguageService L, String loc) {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       child: ListTile(
@@ -142,8 +152,7 @@ class _NotesScreenState extends State<NotesScreen> {
           maxLines: 3,
           overflow: TextOverflow.ellipsis,
         ),
-        // 👈 CẬP NHẬT ĐỊNH DẠNG GIỜ ĐA NGÔN NGỮ
-        subtitle: Text(DateFormat.Hm(isVietnamese ? 'vi_VN' : 'en_US').format(note.date.toDate())),
+        subtitle: Text(DateFormat.Hm(loc).format(note.date.toDate())),
         onTap: () => _navigateToAddEditNote(note),
         trailing: IconButton(
           icon: const Icon(Icons.delete_outline, color: Colors.red),
@@ -151,23 +160,25 @@ class _NotesScreenState extends State<NotesScreen> {
             final confirm = await showDialog<bool>(
               context: context,
               builder: (ctx) => AlertDialog(
-                // 👈 CẬP NHẬT VĂN BẢN TRONG DIALOG
-                title: Text(t('Xác nhận xóa', 'Confirm Deletion')),
-                content: Text(t('Bạn có chắc muốn xóa ghi chú này không?', 'Are you sure you want to delete this note?')),
+                title: Text(L.tr('notes.delete.title')),
+                content: Text(L.tr('notes.delete.body')),
                 actions: [
-                  TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: Text(t('Hủy', 'Cancel'))),
+                  TextButton(
+                    onPressed: () => Navigator.of(ctx).pop(false),
+                    child: Text(L.tr('action.cancel')),
+                  ),
                   TextButton(
                     onPressed: () => Navigator.of(ctx).pop(true),
-                    child: Text(t('Xóa', 'Delete'), style: const TextStyle(color: Colors.red)),
+                    child: Text(L.tr('action.delete'),
+                        style: const TextStyle(color: Colors.red)),
                   ),
                 ],
               ),
             );
             if (confirm == true && mounted) {
               await _noteService.deleteNote(note.id!);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(t('Đã xóa ghi chú', 'Note deleted'))),
-              );
+              ScaffoldMessenger.of(context)
+                  .showSnackBar(SnackBar(content: Text(L.tr('notes.deleted'))));
             }
           },
         ),
@@ -175,4 +186,3 @@ class _NotesScreenState extends State<NotesScreen> {
     );
   }
 }
-

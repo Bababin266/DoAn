@@ -1,6 +1,8 @@
 // lib/screens/add_medicine_screen.dart
 import 'package:flutter/material.dart';
-import '../models/medicine.dart';import '../services/medicine_service.dart';
+
+import '../models/medicine.dart';
+import '../services/medicine_service.dart';
 import '../services/notification_service.dart';
 import '../services/language_service.dart';
 import '../services/dose_state_service.dart';
@@ -18,11 +20,11 @@ class _AddMedicineScreenState extends State<AddMedicineScreen>
   final _formKey = GlobalKey<FormState>();
 
   // Controllers
-  final _nameCtrl   = TextEditingController();
+  final _nameCtrl = TextEditingController();
   final _dosageCtrl = TextEditingController();
-  final _time1Ctrl  = TextEditingController();
-  final _time2Ctrl  = TextEditingController();
-  final _time3Ctrl  = TextEditingController();
+  final _time1Ctrl = TextEditingController();
+  final _time2Ctrl = TextEditingController();
+  final _time3Ctrl = TextEditingController();
 
   final MedicineService _service = MedicineService();
   final NotificationService _notiService = NotificationService.instance;
@@ -44,12 +46,12 @@ class _AddMedicineScreenState extends State<AddMedicineScreen>
   @override
   void initState() {
     super.initState();
-    _ac   = AnimationController(vsync: this, duration: const Duration(milliseconds: 500));
+    _ac = AnimationController(vsync: this, duration: const Duration(milliseconds: 500));
     _fade = CurvedAnimation(parent: _ac, curve: Curves.easeInOut);
 
     if (_isEditing) {
       final m = widget.medicine!;
-      _nameCtrl.text   = m.name;
+      _nameCtrl.text = m.name;
       _dosageCtrl.text = m.dosage;
       _freqCode = _guessFreqCode(m.frequency);
       _typeCode = _guessTypeCode(m.type);
@@ -84,9 +86,8 @@ class _AddMedicineScreenState extends State<AddMedicineScreen>
   }
 
   // ===== Helpers =====
-  String t(String vi, String en) => LanguageService.instance.isVietnamese.value ? vi : en;
-
-  String _toHHmm(TimeOfDay t) => '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+  String _toHHmm(TimeOfDay t) =>
+      '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
 
   ({int hour, int minute}) _parseHHmm(String hhmm) {
     final p = hhmm.split(':');
@@ -97,13 +98,15 @@ class _AddMedicineScreenState extends State<AddMedicineScreen>
 
   Future<void> _pick(TextEditingController ctrl) async {
     final initialTime = ctrl.text.isNotEmpty
-        ? TimeOfDay(hour: _parseHHmm(ctrl.text).hour, minute: _parseHHmm(ctrl.text).minute)
+        ? TimeOfDay(
+      hour: _parseHHmm(ctrl.text).hour,
+      minute: _parseHHmm(ctrl.text).minute,
+    )
         : TimeOfDay.now();
 
     final picked = await showTimePicker(
       context: context,
       initialTime: initialTime,
-      // ✅ ĐÃ XÓA THAM SỐ `locale` KHÔNG HỢP LỆ
     );
     if (picked != null && mounted) {
       setState(() {
@@ -125,8 +128,8 @@ class _AddMedicineScreenState extends State<AddMedicineScreen>
   }
 
   // ===== Logic chính: Lưu và Xóa =====
-
   Future<void> _save() async {
+    final L = LanguageService.instance;
     if (!_formKey.currentState!.validate()) return;
     setState(() => _loading = true);
 
@@ -159,14 +162,19 @@ class _AddMedicineScreenState extends State<AddMedicineScreen>
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(_isEditing ? t('Đã cập nhật thuốc', 'Medicine updated') : t('Đã thêm thuốc mới', 'New medicine added'))),
+          SnackBar(
+            content: Text(_isEditing ? L.tr('toast.updated') : L.tr('toast.added')),
+          ),
         );
         Navigator.of(context).pop();
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${t('Lỗi', 'Error')}: $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text('${L.tr('error.generic')}: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     } finally {
@@ -175,19 +183,24 @@ class _AddMedicineScreenState extends State<AddMedicineScreen>
   }
 
   Future<void> _delete() async {
+    final L = LanguageService.instance;
     if (!_isEditing || widget.medicine?.id == null) return;
 
     final confirm = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: Text(t('Xác nhận xoá', 'Confirm Deletion')),
-        content: Text(t("Bạn có chắc muốn xóa '${widget.medicine!.name}'?", "Are you sure you want to delete '${widget.medicine!.name}'?")),
+        title: Text(L.tr('confirm.delete.title')),
+        content: Text(L.tr('confirm.delete.body',
+            params: {'name': widget.medicine!.name})),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(t('Hủy', 'Cancel'))),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(L.tr('action.cancel')),
+          ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () => Navigator.pop(context, true),
-            child: Text(t('Xoá', 'Delete')),
+            child: Text(L.tr('action.delete')),
           ),
         ],
       ),
@@ -200,15 +213,22 @@ class _AddMedicineScreenState extends State<AddMedicineScreen>
       final id = widget.medicine!.id!;
       await _notiService.cancelAllNotificationsForMedicine(id);
       await _service.deleteMedicine(id);
-      await DoseStateService.instance.clearDoseState(id); // ✅ HÀM NÀY GIỜ ĐÃ HỢP LỆ
+      await DoseStateService.instance.clearDoseState(id);
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(t('Đã xóa thuốc', 'Medicine deleted'))));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(L.tr('toast.deleted.medicine'))),
+        );
         Navigator.of(context).pop();
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${t('Lỗi', 'Error')}: $e'), backgroundColor: Colors.red));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${L.tr('error.generic')}: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -217,10 +237,12 @@ class _AddMedicineScreenState extends State<AddMedicineScreen>
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder<bool>(
-      valueListenable: LanguageService.instance.isVietnamese,
-      builder: (context, isVI, _) {
-        final title = _isEditing ? t('Chỉnh sửa thuốc', 'Edit Medicine') : t('Thêm thuốc mới', 'Add New Medicine');
+    // Lắng nghe langCode → rebuild ngay khi đổi
+    return ValueListenableBuilder<String>(
+      valueListenable: LanguageService.instance.langCode,
+      builder: (_, __, ___) {
+        final L = LanguageService.instance;
+        final title = _isEditing ? L.tr('add.title.edit') : L.tr('add.title.new');
 
         return Scaffold(
           appBar: AppBar(
@@ -228,7 +250,7 @@ class _AddMedicineScreenState extends State<AddMedicineScreen>
             actions: [
               if (_isEditing)
                 IconButton(
-                  tooltip: t('Xoá', 'Delete'),
+                  tooltip: L.tr('action.delete'),
                   onPressed: _loading ? null : _delete,
                   icon: const Icon(Icons.delete_outline, color: Colors.red),
                 ),
@@ -245,27 +267,77 @@ class _AddMedicineScreenState extends State<AddMedicineScreen>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      _buildTextField(_nameCtrl, t('Tên thuốc', 'Medicine Name'), Icons.medication, (v) => (v == null || v.trim().isEmpty) ? t('Vui lòng nhập tên thuốc', 'Please enter medicine name') : null),
-                      _buildTextField(_dosageCtrl, t('Liều lượng', 'Dosage'), Icons.science_outlined, (v) => (v == null || v.trim().isEmpty) ? t('Vui lòng nhập liều lượng', 'Please enter dosage') : null, hint: t('ví dụ: 1 viên, 10ml', 'e.g., 1 pill, 10ml')),
-                      _buildDropdown(_freqCodes, _freqCode, _freqLabel, (v) => setState(() => _freqCode = v ?? 'once'), t('Tần suất', 'Frequency'), Icons.repeat_on_outlined),
-                      _buildDropdown(_typeCodes, _typeCode, _typeLabel, (v) => setState(() => _typeCode = v ?? 'pill'), t('Loại thuốc', 'Medicine Type'), Icons.category_outlined),
+                      _buildTextField(
+                        controller: _nameCtrl,
+                        label: L.tr('field.name'),
+                        icon: Icons.medication,
+                        validator: (v) => (v == null || v.trim().isEmpty)
+                            ? L.tr('validate.name')
+                            : null,
+                      ),
+                      _buildTextField(
+                        controller: _dosageCtrl,
+                        label: L.tr('field.dosage'),
+                        icon: Icons.science_outlined,
+                        hint: L.tr('hint.dosage'),
+                        validator: (v) => (v == null || v.trim().isEmpty)
+                            ? L.tr('validate.dosage')
+                            : null,
+                      ),
+                      _buildDropdown(
+                        codes: _freqCodes,
+                        value: _freqCode,
+                        labelBuilder: _freqLabel,
+                        onChanged: (v) => setState(() => _freqCode = v ?? 'once'),
+                        label: L.tr('field.frequency'),
+                        icon: Icons.repeat_on_outlined,
+                      ),
+                      _buildDropdown(
+                        codes: _typeCodes,
+                        value: _typeCode,
+                        labelBuilder: _typeLabel,
+                        onChanged: (v) => setState(() => _typeCode = v ?? 'pill'),
+                        label: L.tr('field.type'),
+                        icon: Icons.category_outlined,
+                      ),
 
                       const SizedBox(height: 16),
-                      Text(t('Thời gian uống', 'Intake Times'), style: Theme.of(context).textTheme.titleMedium),
+                      Text(L.tr('field.times'), style: Theme.of(context).textTheme.titleMedium),
                       const Divider(),
 
-                      _buildTimePickerField(_time1Ctrl, t('Giờ lần 1', 'Time #1')),
+                      _buildTimePickerField(
+                        controller: _time1Ctrl,
+                        label: L.tr('time.n', params: {'n': '1'}),
+                      ),
                       if (_freqCode == 'twice' || _freqCode == 'thrice')
-                        _buildTimePickerField(_time2Ctrl, t('Giờ lần 2', 'Time #2')),
+                        _buildTimePickerField(
+                          controller: _time2Ctrl,
+                          label: L.tr('time.n', params: {'n': '2'}),
+                        ),
                       if (_freqCode == 'thrice')
-                        _buildTimePickerField(_time3Ctrl, t('Giờ lần 3', 'Time #3')),
+                        _buildTimePickerField(
+                          controller: _time3Ctrl,
+                          label: L.tr('time.n', params: {'n': '3'}),
+                        ),
 
                       const SizedBox(height: 24),
                       ElevatedButton.icon(
-                        style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16), textStyle: const TextStyle(fontSize: 18)),
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          textStyle: const TextStyle(fontSize: 18),
+                        ),
                         onPressed: _loading ? null : _save,
-                        icon: _loading ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : const Icon(Icons.save_alt_outlined),
-                        label: Text(_isEditing ? t('Cập nhật', 'Update') : t('Lưu', 'Save')),
+                        icon: _loading
+                            ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                            : const Icon(Icons.save_alt_outlined),
+                        label: Text(_isEditing ? L.tr('btn.update') : L.tr('btn.save')),
                       ),
                     ],
                   ),
@@ -278,56 +350,101 @@ class _AddMedicineScreenState extends State<AddMedicineScreen>
     );
   }
 
-  // Widget builder helpers
-  Widget _buildTextField(TextEditingController controller, String label, IconData icon, String? Function(String?)? validator, {String? hint}) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 8.0),
-    child: TextFormField(
-      controller: controller,
-      decoration: InputDecoration(labelText: label, prefixIcon: Icon(icon), hintText: hint, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
-      validator: validator,
-    ),
-  );
+  // ===== UI helpers =====
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    String? Function(String?)? validator,
+    String? hint,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: TextFormField(
+        controller: controller,
+        decoration: InputDecoration(
+          labelText: label,
+          prefixIcon: Icon(icon),
+          hintText: hint,
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+        validator: validator,
+      ),
+    );
+  }
 
-  Widget _buildDropdown(List<String> codes, String value, String Function(String) labelBuilder, void Function(String?) onChanged, String label, IconData icon) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 8.0),
-    child: DropdownButtonFormField<String>(
-      value: value,
-      items: codes.map((c) => DropdownMenuItem(value: c, child: Text(labelBuilder(c)))).toList(),
-      onChanged: onChanged,
-      decoration: InputDecoration(labelText: label, prefixIcon: Icon(icon), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
-    ),
-  );
+  Widget _buildDropdown({
+    required List<String> codes,
+    required String value,
+    required String Function(String) labelBuilder,
+    required void Function(String?) onChanged,
+    required String label,
+    required IconData icon,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: DropdownButtonFormField<String>(
+        value: value,
+        items: codes
+            .map(
+              (c) => DropdownMenuItem(
+            value: c,
+            child: Text(labelBuilder(c)),
+          ),
+        )
+            .toList(),
+        onChanged: onChanged,
+        decoration: InputDecoration(
+          labelText: label,
+          prefixIcon: Icon(icon),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      ),
+    );
+  }
 
-  Widget _buildTimePickerField(TextEditingController controller, String label) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 8.0),
-    child: TextFormField(
-      controller: controller,
-      readOnly: true,
-      onTap: () => _pick(controller),
-      decoration: InputDecoration(labelText: label, prefixIcon: const Icon(Icons.access_time_outlined), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
-      validator: (v) => (v == null || v.trim().isEmpty) ? t('Vui lòng chọn giờ', 'Please pick a time') : null,
-    ),
-  );
+  Widget _buildTimePickerField({
+    required TextEditingController controller,
+    required String label,
+  }) {
+    final L = LanguageService.instance;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: TextFormField(
+        controller: controller,
+        readOnly: true,
+        onTap: () => _pick(controller),
+        decoration: InputDecoration(
+          labelText: label,
+          prefixIcon: const Icon(Icons.access_time_outlined),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+        validator: (v) => (v == null || v.trim().isEmpty) ? L.tr('validate.time') : null,
+      ),
+    );
+  }
 
   String _freqLabel(String code) {
+    final L = LanguageService.instance;
     return switch (code) {
-      'once'   => t('1 lần/ngày', 'Once daily'),
-      'twice'  => t('2 lần/ngày', 'Twice daily'),
-      'thrice' => t('3 lần/ngày', '3 times daily'),
-      _        => code
+      'once'   => L.tr('freq.once'),
+      'twice'  => L.tr('freq.twice'),
+      'thrice' => L.tr('freq.thrice'),
+      _        => code,
     };
   }
 
   String _typeLabel(String code) {
+    final L = LanguageService.instance;
     return switch (code) {
-      'pill'      => t('Viên nén', 'Pill'),
-      'capsule'   => t('Viên nang', 'Capsule'),
-      'syrup'     => t('Siro', 'Syrup'),
-      'topical'   => t('Thuốc bôi', 'Topical'),
-      'eyedrop'   => t('Thuốc nhỏ mắt', 'Eye drops'),
-      'spray'     => t('Thuốc xịt', 'Spray'),
-      'injection' => t('Thuốc tiêm', 'Injection'),
-      _           => code
+      'pill'      => L.tr('type.pill'),
+      'capsule'   => L.tr('type.capsule'),
+      'syrup'     => L.tr('type.syrup'),
+      'topical'   => L.tr('type.topical'),
+      'eyedrop'   => L.tr('type.eyedrop'),
+      'spray'     => L.tr('type.spray'),
+      'injection' => L.tr('type.injection'),
+      _           => code,
     };
   }
 

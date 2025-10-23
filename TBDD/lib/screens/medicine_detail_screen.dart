@@ -1,3 +1,4 @@
+// lib/screens/medicine_detail_screen.dart
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -18,9 +19,6 @@ class _MedicineDetailScreenState extends State<MedicineDetailScreen> {
   final _svc = MedicineService();
   final _noteCtrl = TextEditingController();
   late Future<List<String>> _timesFut;
-
-  String t(String vi, String en) =>
-      LanguageService.instance.isVietnamese.value ? vi : en;
 
   @override
   void initState() {
@@ -45,13 +43,15 @@ class _MedicineDetailScreenState extends State<MedicineDetailScreen> {
     final sp = await SharedPreferences.getInstance();
     await sp.setString('med_note_${widget.medicine.id}', _noteCtrl.text.trim());
     if (!mounted) return;
+
+    final L = LanguageService.instance;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(
           children: [
             const Icon(Icons.check_circle, color: Colors.white),
             const SizedBox(width: 12),
-            Text(t('Đã lưu ghi chú', 'Notes saved')),
+            Text(L.tr('notes.saved')),
           ],
         ),
         behavior: SnackBarBehavior.floating,
@@ -64,43 +64,46 @@ class _MedicineDetailScreenState extends State<MedicineDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final m = widget.medicine;
-    final count = _countByFreq(m.frequency);
-    final colorScheme = Theme.of(context).colorScheme;
+    // Lắng nghe thay đổi ngôn ngữ để rebuild
+    return ValueListenableBuilder<String>(
+      valueListenable: LanguageService.instance.langCode,
+      builder: (_, __, ___) {
+        final L = LanguageService.instance;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(t('Chi tiết thuốc', 'Medicine Details')),
-        elevation: 0,
-      ),
-      body: FutureBuilder<List<String>>(
-        future: _timesFut,
-        builder: (context, timeSnap) {
-          final times = (timeSnap.data != null && timeSnap.data!.isNotEmpty)
-              ? timeSnap.data!
-              : [m.time];
+        final m = widget.medicine;
+        final count = _countByFreq(m.frequency);
+        final colorScheme = Theme.of(context).colorScheme;
 
-          return SingleChildScrollView(
-            child: Column(
-              children: [
-                // Header Card với gradient
-                Container(
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        colorScheme.primaryContainer,
-                        colorScheme.primaryContainer.withOpacity(0.7),
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                  ),
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
+        return Scaffold(
+          appBar: AppBar(
+            title: Text(L.tr('detail.title')),
+            elevation: 0,
+          ),
+          body: FutureBuilder<List<String>>(
+            future: _timesFut,
+            builder: (context, timeSnap) {
+              final times = (timeSnap.data != null && timeSnap.data!.isNotEmpty)
+                  ? timeSnap.data!
+                  : [m.time];
+
+              return SingleChildScrollView(
+                child: Column(
+                  children: [
+                    // Header gradient
+                    Container(
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            colorScheme.primaryContainer,
+                            colorScheme.primaryContainer.withOpacity(0.7),
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                      ),
+                      padding: const EdgeInsets.all(24),
+                      child: Row(
                         children: [
                           Container(
                             padding: const EdgeInsets.all(16),
@@ -115,11 +118,8 @@ class _MedicineDetailScreenState extends State<MedicineDetailScreen> {
                                 ),
                               ],
                             ),
-                            child: Icon(
-                              Icons.medication_rounded,
-                              color: Colors.white,
-                              size: 32,
-                            ),
+                            child: const Icon(Icons.medication_rounded,
+                                color: Colors.white, size: 32),
                           ),
                           const SizedBox(width: 16),
                           Expanded(
@@ -158,140 +158,148 @@ class _MedicineDetailScreenState extends State<MedicineDetailScreen> {
                           ),
                         ],
                       ),
-                    ],
-                  ),
-                ),
+                    ),
 
-                // Content
-                Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Frequency Card
-                      _buildInfoCard(
-                        context,
-                        icon: Icons.repeat_rounded,
-                        iconColor: Colors.blue,
-                        title: t('Tần suất', 'Frequency'),
-                        content: switch (m.frequency) {
-                          'twice' => t('2 lần/ngày', 'Twice daily'),
-                          'thrice' => t('3 lần/ngày', '3 times daily'),
-                          _ => t('1 lần/ngày', 'Once daily')
-                        },
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Time Card
-                      _buildInfoCard(
-                        context,
-                        icon: Icons.access_time_rounded,
-                        iconColor: Colors.purple,
-                        title: t('Giờ uống', 'Dosage Times'),
-                        content: times.join('  •  '),
-                      ),
-                      const SizedBox(height: 24),
-
-                      // Trạng thái hôm nay
-                      Text(
-                        t('Trạng thái hôm nay', 'Today\'s Status'),
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      StreamBuilder(
-                        stream: _svc.watchMedicineDoc(m.id!),
-                        builder: (context, snap) {
-                          final takenToday = (snap.hasData &&
-                              (snap.data as dynamic).exists)
-                              ? _svc.getTodayArrayFromDoc(
-                              snap.data as dynamic, count)
-                              : List<bool>.filled(count, false);
-
-                          return Wrap(
-                            spacing: 12,
-                            runSpacing: 12,
-                            children: List.generate(count, (i) {
-                              final on =
-                              (i < takenToday.length) ? takenToday[i] : false;
-                              final label = (i < times.length)
-                                  ? times[i]
-                                  : t('Lần ${i + 1}', 'Dose ${i + 1}');
-                              return _buildDoseChip(
-                                  context, label, on, i, m.id!, count);
-                            }),
-                          );
-                        },
-                      ),
-                      const SizedBox(height: 32),
-
-                      // Ghi chú Section
-                      Text(
-                        t('Ghi chú', 'Notes'),
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Container(
-                        decoration: BoxDecoration(
-                          color: colorScheme.surfaceVariant.withOpacity(0.3),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: colorScheme.outline.withOpacity(0.2),
+                    // Content
+                    Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Frequency
+                          _buildInfoCard(
+                            context,
+                            icon: Icons.repeat_rounded,
+                            iconColor: Colors.blue,
+                            title: LanguageService.instance.tr('field.frequency'),
+                            content: switch (m.frequency) {
+                              'twice' => L.tr('freq.twice'),
+                              'thrice' => L.tr('freq.thrice'),
+                              _ => L.tr('freq.once'),
+                            },
                           ),
-                        ),
-                        child: TextField(
-                          controller: _noteCtrl,
-                          minLines: 4,
-                          maxLines: 8,
-                          decoration: InputDecoration(
-                            hintText: t(
-                              'Nhập ghi chú cho thuốc này…',
-                              'Write notes for this medicine…',
-                            ),
-                            border: InputBorder.none,
-                            contentPadding: const EdgeInsets.all(16),
+                          const SizedBox(height: 16),
+
+                          // Times
+                          _buildInfoCard(
+                            context,
+                            icon: Icons.access_time_rounded,
+                            iconColor: Colors.purple,
+                            title: L.tr('detail.times'),
+                            content: times.join('  •  '),
                           ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 52,
-                        child: ElevatedButton.icon(
-                          onPressed: _saveNote,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: colorScheme.primary,
-                            foregroundColor: colorScheme.onPrimary,
-                            elevation: 2,
-                            shape: RoundedRectangleBorder(
+                          const SizedBox(height: 24),
+
+                          // Today's Status
+                          Text(
+                            L.tr('detail.section.status'),
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleLarge
+                                ?.copyWith(fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 12),
+                          StreamBuilder(
+                            stream: _svc.watchMedicineDoc(m.id!),
+                            builder: (context, snap) {
+                              final takenToday = (snap.hasData &&
+                                  (snap.data as dynamic).exists)
+                                  ? _svc.getTodayArrayFromDoc(
+                                  snap.data as dynamic, count)
+                                  : List<bool>.filled(count, false);
+
+                              return Wrap(
+                                spacing: 12,
+                                runSpacing: 12,
+                                children: List.generate(count, (i) {
+                                  final on = (i < takenToday.length)
+                                      ? takenToday[i]
+                                      : false;
+                                  final label = (i < times.length)
+                                      ? times[i]
+                                      : L.tr('dose.n',
+                                      params: {'n': '${i + 1}'});
+                                  return _buildDoseChip(
+                                    context,
+                                    label,
+                                    on,
+                                    i,
+                                    m.id!,
+                                    count,
+                                  );
+                                }),
+                              );
+                            },
+                          ),
+                          const SizedBox(height: 32),
+
+                          // Notes
+                          Text(
+                            L.tr('notes.title'),
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleLarge
+                                ?.copyWith(fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 12),
+                          Container(
+                            decoration: BoxDecoration(
+                              color: colorScheme.surfaceVariant.withOpacity(0.3),
                               borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: colorScheme.outline.withOpacity(0.2),
+                              ),
+                            ),
+                            child: TextField(
+                              controller: _noteCtrl,
+                              minLines: 4,
+                              maxLines: 8,
+                              decoration: InputDecoration(
+                                hintText: L.tr('notes.hint'),
+                                border: InputBorder.none,
+                                contentPadding: const EdgeInsets.all(16),
+                              ),
                             ),
                           ),
-                          icon: const Icon(Icons.save_rounded),
-                          label: Text(
-                            t('Lưu ghi chú', 'Save Notes'),
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
+                          const SizedBox(height: 16),
+                          SizedBox(
+                            width: double.infinity,
+                            height: 52,
+                            child: ElevatedButton.icon(
+                              onPressed: _saveNote,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: colorScheme.primary,
+                                foregroundColor: colorScheme.onPrimary,
+                                elevation: 2,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                              ),
+                              icon: const Icon(Icons.save_rounded),
+                              label: Text(
+                                L.tr('notes.save'),
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
                             ),
                           ),
-                        ),
+                          const SizedBox(height: 20),
+                        ],
                       ),
-                      const SizedBox(height: 20),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          );
-        },
-      ),
+              );
+            },
+          ),
+        );
+      },
     );
   }
 
+  // ===== UI helpers =====
   Widget _buildInfoCard(
       BuildContext context, {
         required IconData icon,
@@ -364,9 +372,7 @@ class _MedicineDetailScreenState extends State<MedicineDetailScreen> {
       ) {
     final colorScheme = Theme.of(context).colorScheme;
     return Material(
-      color: isTaken
-          ? colorScheme.primary
-          : colorScheme.surfaceVariant,
+      color: isTaken ? colorScheme.primary : colorScheme.surfaceVariant,
       borderRadius: BorderRadius.circular(16),
       elevation: isTaken ? 4 : 0,
       child: InkWell(

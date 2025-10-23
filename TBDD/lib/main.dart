@@ -1,10 +1,8 @@
-// lib/main.dart
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-// ✅ Thêm gói localizations của Flutter
 import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'firebase_options.dart';
@@ -25,29 +23,31 @@ final GlobalKey<NavigatorState> _navKey = GlobalKey<NavigatorState>();
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // Khởi tạo Firebase, theme, language, noti
+
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   await ThemeService.instance.init();
-  await LanguageService.instance.init(); // đọc ngôn ngữ đã lưu / thiết bị
 
-  // Chuẩn bị Dev/Date symbols cho ngôn ngữ hiện tại (nếu dùng DateFormat không kèm locale)
-  await initializeDateFormatting();
+  // ✅ Lấy locale của thiết bị để làm ngôn ngữ mặc định lần đầu
+  final deviceLocale = WidgetsBinding.instance.platformDispatcher.locale;
+  await LanguageService.instance.init(deviceLocale: deviceLocale);
 
-  // Lấy launch details TRƯỚC khi init NotificationService
+  // ✅ Khởi tạo định dạng ngày giờ theo locale hiện tại
+  final initialTag = LanguageService.instance.langCode.value;
+  Intl.defaultLocale = initialTag;
+  await initializeDateFormatting(Intl.defaultLocale);
+
+  // ===== Notification =====
   final plugin = FlutterLocalNotificationsPlugin();
-  final NotificationAppLaunchDetails? launchDetails =
-  await plugin.getNotificationAppLaunchDetails();
-
+  final launchDetails = await plugin.getNotificationAppLaunchDetails();
   await NotificationService.instance.init(navigatorKey: _navKey);
 
-  // Nếu app được mở từ thông báo
-  if (launchDetails?.didNotificationLaunchApp ?? false) {
-    final response = launchDetails!.notificationResponse;
-    if (response?.actionId == 'mark_taken') {
-      Future.delayed(const Duration(milliseconds: 500), () {
-        NotificationService.instance.handleTapFromTerminatedState(response);
-      });
-    }
+  if ((launchDetails?.didNotificationLaunchApp ?? false) &&
+      launchDetails?.notificationResponse != null &&
+      launchDetails!.notificationResponse!.actionId == 'mark_taken') {
+    Future.delayed(const Duration(milliseconds: 500), () {
+      NotificationService.instance
+          .handleTapFromTerminatedState(launchDetails.notificationResponse);
+    });
   }
 
   runApp(const MedicineApp());
@@ -63,34 +63,29 @@ class MedicineApp extends StatelessWidget {
     return ValueListenableBuilder<ThemeMode>(
       valueListenable: ThemeService.instance.mode,
       builder: (_, mode, __) {
-        // ✅ Lắng nghe thay đổi ngôn ngữ để rebuild TOÀN BỘ MaterialApp
+        // ✅ Lắng nghe thay đổi ngôn ngữ để rebuild toàn bộ MaterialApp
         return ValueListenableBuilder<String>(
-          valueListenable: lang.langCode, // <— quan trọng
+          valueListenable: lang.langCode,
           builder: (_, currentCode, ___) {
-            // Tạo danh sách Locale hỗ trợ từ LanguageService (ví dụ: ['vi','en','ja',...])
             final supportedLocales = lang.supportedLocales();
 
-            // Locale hiện tại tương ứng với mã đang chọn
+            // Locale hiện tại
             final currentLocale = supportedLocales.firstWhere(
                   (l) =>
               l.toLanguageTag() == currentCode ||
-                  l.languageCode == currentCode,
+                  l.languageCode == currentCode.split('-').first,
               orElse: () => const Locale('vi'),
             );
 
-            // Cho Intl biết locale mặc định (ảnh hưởng DateFormat khi bạn không truyền 'locale')
             Intl.defaultLocale = currentLocale.toLanguageTag();
-
-            // Nếu bạn muốn chắc kèo cho date symbols: (an toàn, không bắt buộc)
-            // await initializeDateFormatting(currentLocale.toLanguageTag());
+            initializeDateFormatting(Intl.defaultLocale);
 
             return MaterialApp(
               debugShowCheckedModeBanner: false,
               navigatorKey: _navKey,
-              // Dịch tiêu đề app
-              title: lang.tr('app.name'),
+              title: lang.tr('app.name', fallback: 'Medicine Reminder'),
 
-              // ✅ Cài đặt đa ngôn ngữ cho toàn app
+              // ✅ Đa ngôn ngữ
               locale: currentLocale,
               supportedLocales: supportedLocales,
               localizationsDelegates: const [
@@ -98,6 +93,7 @@ class MedicineApp extends StatelessWidget {
                 GlobalWidgetsLocalizations.delegate,
                 GlobalCupertinoLocalizations.delegate,
               ],
+              localeListResolutionCallback: (_, __) => currentLocale,
 
               // Theme
               themeMode: mode,
