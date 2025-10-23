@@ -130,6 +130,7 @@ class LanguageService {
   }
 
   /// Hiển thị tên ngôn ngữ
+  /// Hiển thị tên ngôn ngữ theo mã
   String displayNameOf(String code) {
     const names = {
       'en': 'English',
@@ -143,6 +144,10 @@ class LanguageService {
       'tr': 'Türkçe',
       'zh-Hans': '简体中文',
       'zh-Hant': '繁體中文',
+      'ru': 'Русский',          // Russian
+      'hi': 'हिन्दी',           // Hindi
+      'th': 'ภาษาไทย',          // Thai
+      'ar': 'العربية',           // Arabic
     };
     return names[code] ?? code;
   }
@@ -161,6 +166,10 @@ class LanguageService {
       'tr': '🇹🇷',
       'zh-Hans': '🇨🇳',
       'zh-Hant': '🇹🇼',
+      'ru': '🇷🇺',  // Russian
+      'hi': '🇮🇳',  // Hindi
+      'th': '🇹🇭',  // Thai
+      'ar': '🇸🇦',  // Arabic (bạn có thể đổi sang 🇪🇬 hoặc 🇦🇪 nếu muốn)
     };
     return flags[code] ?? '🌐';
   }

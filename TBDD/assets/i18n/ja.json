@@ -14,17 +14,77 @@
   "action": { "open": "開く", "edit": "編集", "delete": "削除", "cancel": "キャンセル" },
   "toast": { "added": "追加しました", "updated": "更新しました", "deleted": "削除しました", "deleted.medicine": "薬を削除しました" },
   "confirm": { "delete": { "title": "削除", "body": "\"{name}\" を削除しますか？" } },
-  "error": { "generic": "エラー", "loading": "読み込みに失敗しました", "delete": "削除に失敗: ", "export": { "csv": "CSV のエクスポートに失敗: ", "pdf": "PDF のエクスポートに失敗: " }, "missing": { "medicine": "この薬は存在しません。" } },
+  "error": {
+    "generic": "エラー",
+    "loading": "読み込みに失敗しました",
+    "delete": "削除に失敗: ",
+    "export": { "csv": "CSV のエクスポートに失敗: ", "pdf": "PDF のエクスポートに失敗: " },
+    "missing": { "medicine": "この薬は存在しません。" }
+  },
   "table": { "name": "名前", "dosage": "用量", "frequency": "頻度" },
   "export": { "none": "エクスポートするデータがありません", "saved": { "csv": "CSV を保存: ", "pdf": "PDF を保存: " } },
   "pdf": { "title": "薬一覧", "exported.on": "エクスポート日時", "page": "ページ" },
   "dose": { "n": "第{n}回", "all": { "taken": "本日のすべての服用が完了しました！" }, "confirmed": "{name} を服用済みにしました" },
   "logout": { "title": "ログアウトしますか？", "body": "再度ログインが必要です。" },
-  "take": { "title": { "short": "確認", "full": "服用を確認" }, "missing": { "info": "薬の情報が不足しています" }, "prompt": "この服用を完了しましたか？ 次の服用を確認してください。", "btn": "服用済みにする" },
+  "take": {
+    "title": { "short": "確認", "full": "服用を確認" },
+    "missing": { "info": "薬の情報が不足しています" },
+    "prompt": "この服用を完了しましたか？ 次の服用を確認してください。",
+    "btn": "服用済みにする"
+  },
   "validate": { "name": "薬の名前を入力してください", "dosage": "用量を入力してください", "time": "時間を選択してください" },
-  "menu": { "export": { "pdf": "PDFをエクスポート", "csv": "CSVをエクスポート" }, "theme": "テーマ", "lang": "言語", "logout": "ログアウト" },
+
+  "menu": {
+    "export": { "pdf": "PDFをエクスポート", "csv": "CSVをエクスポート" },
+    "theme": "テーマ",
+    "lang": "言語",
+    "logout": "ログアウト",
+    "notes": "メモ",
+    "stats": "統計",
+    "more": "その他"
+  },
+
+  "lang": { "select": "言語を選択" },
+  "fab": { "add": "追加" },
 
   "detail": { "title": "薬の詳細", "times": "服用時間", "section": { "status": "今日の状況" } },
-  "notes": { "title": "メモ", "hint": "この薬についてのメモを入力…", "save": "メモを保存", "saved": "メモを保存しました", "appbar": "健康メモ", "empty": "メモはまだありません", "add": "メモを追加", "delete": { "title": "削除の確認", "body": "このメモを削除しますか？" }, "deleted": "メモを削除しました" },
-  "stats": { "title": "服薬遵守の統計", "last7": "直近7日間の遵守率", "viewHistory": "履歴を表示", "noDataDay": "この日のデータはありません", "detailsFor": "詳細：", "dosesTaken": "服用した回数", "dosesMissed": "飲み忘れ", "rate": "遵守率", "total": "合計回数", "taken": "服用", "average": "平均", "axis0": "0%", "axis50": "50%", "axis100": "100%", "locale": "ロケール: {tag}" }
+
+  "notes": {
+    "title": "メモ",
+    "hint": "この薬についてのメモを入力…",
+    "save": "メモを保存",
+    "saved": "メモを保存しました",
+    "appbar": "健康メモ",
+    "empty": "メモはまだありません",
+    "add": "メモを追加",
+    "delete": { "title": "削除の確認", "body": "このメモを削除しますか？" },
+    "deleted": "メモを削除しました",
+    "editor": {
+      "title": { "new": "新しいメモを追加", "edit": "メモを編集" },
+      "date": "メモの日付",
+      "content": {
+        "label": "メモ内容",
+        "hint": "今日の体調はどうですか？",
+        "required": "内容を入力してください"
+      }
+    }
+  },
+
+  "stats": {
+    "title": "服薬遵守の統計",
+    "last7": "直近7日間の遵守率",
+    "viewHistory": "履歴を表示",
+    "noDataDay": "この日のデータはありません",
+    "detailsFor": "詳細：",
+    "dosesTaken": "服用した回数",
+    "dosesMissed": "飲み忘れ",
+    "rate": "遵守率",
+    "total": "合計回数",
+    "taken": "服用",
+    "average": "平均",
+    "axis0": "0%",
+    "axis50": "50%",
+    "axis100": "100%",
+    "locale": "ロケール: {tag}"
+  }
 }

@@ -8,7 +8,6 @@ de
 zh-Hans
 zh-Hant
 ru
-ar
 hi
 th
 id

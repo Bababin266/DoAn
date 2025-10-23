@@ -1,29 +1,97 @@
 {
-  "app": { "name": "Recordatorio de Medicamentos" },
-  "home": { "title": "Mis medicamentos" },
-  "search": { "hint": "Buscar medicamentos..." },
-  "filter": { "all": "Todos", "pending": "Pendientes", "missed": "Omitidos", "done": "Tomados" },
-  "empty": { "title": "Aún no hay medicamentos", "hint": "Toca + para agregar el primero", "search": "No se encontraron resultados" },
-  "add": { "title": { "new": "Agregar medicamento", "edit": "Editar medicamento" } },
-  "field": { "name": "Nombre del medicamento", "dosage": "Dosis", "frequency": "Frecuencia", "type": "Tipo de medicamento", "times": "Horarios de toma" },
-  "hint": { "dosage": "ej.: 500 mg" },
+  "app": { "name": "Recordatorio de Medicinas" },
+  "home": { "title": "Mis Medicinas" },
+  "search": { "hint": "Buscar medicinas..." },
+  "filter": { "all": "Todas", "pending": "Pendientes", "missed": "Omitidas", "done": "Tomadas" },
+  "empty": { "title": "Aún no hay medicinas", "hint": "Toca + para añadir tu primera medicina", "search": "Sin resultados" },
+
+  "add": { "title": { "new": "Añadir nueva medicina", "edit": "Editar medicina" } },
+  "field": { "name": "Nombre de la medicina", "dosage": "Dosis", "frequency": "Frecuencia", "type": "Tipo de medicina", "times": "Horarios de toma" },
+  "hint": { "dosage": "p. ej., 500mg" },
   "time": { "n": "Hora #{n}" },
   "freq": { "once": "Una vez al día", "twice": "Dos veces al día", "thrice": "Tres veces al día" },
-  "type": { "pill": "Tableta", "capsule": "Cápsula", "syrup": "Jarabe", "topical": "Tópico", "eyedrop": "Gotas oftálmicas", "spray": "Spray", "injection": "Inyección" },
+  "type": { "pill": "Píldora", "capsule": "Cápsula", "syrup": "Jarabe", "topical": "Tópico", "eyedrop": "Gotas", "spray": "Spray", "injection": "Inyección" },
+
   "btn": { "save": "Guardar", "update": "Actualizar" },
   "action": { "open": "Abrir", "edit": "Editar", "delete": "Eliminar", "cancel": "Cancelar" },
-  "toast": { "added": "Agregado correctamente", "updated": "Actualizado", "deleted": "Eliminado", "deleted.medicine": "Medicamento eliminado" },
+
+  "toast": { "added": "Añadido correctamente", "updated": "Actualizado", "deleted": "Eliminado", "deleted.medicine": "Medicina eliminada" },
+
   "confirm": { "delete": { "title": "Eliminar", "body": "¿Eliminar \"{name}\"?" } },
-  "error": { "generic": "Error", "loading": "Error al cargar", "delete": "No se pudo eliminar: ", "export": { "csv": "Error al exportar CSV: ", "pdf": "Error al exportar PDF: " }, "missing": { "medicine": "El medicamento ya no existe." } },
+
+  "error": {
+    "generic": "Error",
+    "loading": "Error al cargar",
+    "delete": "Error al eliminar: ",
+    "export": { "csv": "Error al exportar CSV: ", "pdf": "Error al exportar PDF: " },
+    "missing": { "medicine": "La medicina ya no existe." }
+  },
+
   "table": { "name": "Nombre", "dosage": "Dosis", "frequency": "Frecuencia" },
+
   "export": { "none": "No hay datos para exportar", "saved": { "csv": "CSV guardado: ", "pdf": "PDF guardado: " } },
-  "pdf": { "title": "Lista de medicamentos", "exported.on": "Exportado el", "page": "Página" },
+  "pdf": { "title": "Lista de medicinas", "exported.on": "Exportado el", "page": "Página" },
+
   "dose": { "n": "Dosis #{n}", "all": { "taken": "¡Todas las dosis de hoy están tomadas!" }, "confirmed": "Dosis confirmada para {name}" },
-  "logout": { "title": "¿Cerrar sesión?", "body": "Deberás iniciar sesión de nuevo." },
-  "take": { "title": { "short": "Confirmar", "full": "Confirmar dosis" }, "missing": { "info": "Faltan datos" }, "prompt": "¿Tomaste esta dosis? Pulsa para confirmar la siguiente.", "btn": "Marcar como tomada" },
-  "validate": { "name": "Ingresa el nombre del medicamento", "dosage": "Ingresa la dosis", "time": "Selecciona una hora" },
-  "menu": { "export": { "pdf": "Exportar PDF", "csv": "Exportar CSV" }, "theme": "Tema", "lang": "Idioma", "logout": "Cerrar sesión" },
-  "detail": { "title": "Detalles del medicamento", "times": "Horarios de toma", "section": { "status": "Estado de hoy" } },
-  "notes": { "title": "Notas", "hint": "Escribe notas para este medicamento…", "save": "Guardar nota", "saved": "Nota guardada", "appbar": "Notas de salud", "empty": "Sin notas", "add": "Agregar nota", "delete": { "title": "Confirmar eliminación", "body": "¿Eliminar esta nota?" }, "deleted": "Nota eliminada" },
-  "stats": { "title": "Estadísticas de adherencia", "last7": "Adherencia en los últimos 7 días", "viewHistory": "Ver historial", "noDataDay": "Sin datos para este día", "detailsFor": "Detalles para: ", "dosesTaken": "Dosis tomadas", "dosesMissed": "Dosis omitidas", "rate": "Tasa de adherencia", "total": "Total", "taken": "Tomadas", "average": "Promedio", "axis0": "0%", "axis50": "50%", "axis100": "100%", "locale": "Idioma: {tag}" }
+
+  "logout": { "title": "¿Cerrar sesión?", "body": "Tendrás que iniciar sesión de nuevo." },
+
+  "take": {
+    "title": { "short": "Confirmar", "full": "Confirmar dosis" },
+    "missing": { "info": "Faltan datos de la medicina" },
+    "prompt": "¿Tomaste esta dosis? Pulsa para confirmar la siguiente.",
+    "btn": "Marcar como tomada"
+  },
+
+  "validate": { "name": "Ingresa el nombre de la medicina", "dosage": "Ingresa la dosis", "time": "Selecciona una hora" },
+
+  "menu": {
+    "export": { "pdf": "Exportar PDF", "csv": "Exportar CSV" },
+    "theme": "Tema",
+    "lang": "Idioma",
+    "logout": "Cerrar sesión",
+    "notes": "Notas",
+    "stats": "Estadísticas",
+    "more": "Más"
+  },
+
+  "lang": { "select": "Elegir idioma" },
+  "fab": { "add": "Añadir" },
+
+  "detail": { "title": "Detalles de la medicina", "times": "Horarios de toma", "section": { "status": "Estado de hoy" } },
+
+  "notes": {
+    "title": "Notas",
+    "hint": "Escribe una nota para esta medicina…",
+    "save": "Guardar nota",
+    "saved": "Nota guardada",
+    "appbar": "Notas de salud",
+    "empty": "Sin notas",
+    "add": "Añadir nota",
+    "delete": { "title": "Confirmar eliminación", "body": "¿Eliminar esta nota?" },
+    "deleted": "Nota eliminada",
+    "editor": {
+      "title": { "new": "Añadir nueva nota", "edit": "Editar nota" },
+      "date": "Fecha de la nota",
+      "content": { "label": "Contenido de la nota", "hint": "¿Cómo te sientes hoy?", "required": "Ingresa el contenido" }
+    }
+  },
+
+  "stats": {
+    "title": "Estadísticas de adherencia",
+    "last7": "Adherencia en los últimos 7 días",
+    "viewHistory": "Ver historial",
+    "noDataDay": "No hay datos para este día",
+    "detailsFor": "Detalles para ",
+    "dosesTaken": "Dosis tomadas",
+    "dosesMissed": "Dosis omitidas",
+    "rate": "Tasa de adherencia",
+    "total": "Total",
+    "taken": "Tomadas",
+    "average": "Promedio",
+    "axis0": "0%",
+    "axis50": "50%",
+    "axis100": "100%",
+    "locale": "Idioma: {tag}"
+  }
 }

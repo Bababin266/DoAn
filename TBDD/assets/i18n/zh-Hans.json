@@ -2,28 +2,96 @@
   "app": { "name": "用药提醒" },
   "home": { "title": "我的药物" },
   "search": { "hint": "搜索药物…" },
-  "filter": { "all": "全部", "pending": "未服用", "missed": "已漏服", "done": "已服用" },
-  "empty": { "title": "还没有药物", "hint": "点按 + 添加第一个药物", "search": "未找到结果" },
-  "add": { "title": { "new": "添加药物", "edit": "编辑药物" } },
+  "filter": { "all": "全部", "pending": "待服用", "missed": "已漏服", "done": "已服用" },
+  "empty": { "title": "暂无药物", "hint": "点按 + 添加第一条药物", "search": "未找到结果" },
+
+  "add": { "title": { "new": "添加新药物", "edit": "编辑药物" } },
   "field": { "name": "药物名称", "dosage": "剂量", "frequency": "频率", "type": "药物类型", "times": "服用时间" },
-  "hint": { "dosage": "如：500mg" },
+  "hint": { "dosage": "例如：500mg" },
   "time": { "n": "时间 #{n}" },
-  "freq": { "once": "每天一次", "twice": "每天两次", "thrice": "每天三次" },
-  "type": { "pill": "片剂", "capsule": "胶囊", "syrup": "糖浆", "topical": "外用药", "eyedrop": "眼药水", "spray": "喷雾", "injection": "注射" },
+  "freq": { "once": "每日一次", "twice": "每日两次", "thrice": "每日三次" },
+  "type": { "pill": "片剂", "capsule": "胶囊", "syrup": "糖浆", "topical": "外用", "eyedrop": "眼药水", "spray": "喷剂", "injection": "注射" },
+
   "btn": { "save": "保存", "update": "更新" },
   "action": { "open": "打开", "edit": "编辑", "delete": "删除", "cancel": "取消" },
-  "toast": { "added": "添加成功", "updated": "更新成功", "deleted": "已删除", "deleted.medicine": "已删除药物" },
+
+  "toast": { "added": "添加成功", "updated": "已更新", "deleted": "已删除", "deleted.medicine": "药物已删除" },
+
   "confirm": { "delete": { "title": "删除", "body": "删除“{name}”？" } },
-  "error": { "generic": "错误", "loading": "加载失败", "delete": "删除失败：", "export": { "csv": "导出 CSV 失败：", "pdf": "导出 PDF 失败：" }, "missing": { "medicine": "药物不存在。" } },
+
+  "error": {
+    "generic": "错误",
+    "loading": "加载失败",
+    "delete": "删除失败：",
+    "export": { "csv": "导出 CSV 失败：", "pdf": "导出 PDF 失败：" },
+    "missing": { "medicine": "药物已不存在。" }
+  },
+
   "table": { "name": "名称", "dosage": "剂量", "frequency": "频率" },
-  "export": { "none": "没有可导出的数据", "saved": { "csv": "已保存 CSV：", "pdf": "已保存 PDF：" } },
+
+  "export": { "none": "无可导出的数据", "saved": { "csv": "已保存 CSV：", "pdf": "已保存 PDF：" } },
   "pdf": { "title": "药物清单", "exported.on": "导出时间", "page": "页" },
-  "dose": { "n": "第{n}次", "all": { "taken": "今天的所有剂量都已服用！" }, "confirmed": "已确认 {name} 的剂量" },
-  "logout": { "title": "退出登录？", "body": "需要重新登录。" },
-  "take": { "title": { "short": "确认", "full": "确认剂量" }, "missing": { "info": "缺少药物信息" }, "prompt": "是否已服用此剂量？点击确认下一次。", "btn": "标记为已服用" },
+
+  "dose": { "n": "第 #{n} 次", "all": { "taken": "今天所有剂量均已服用！" }, "confirmed": "已确认 {name} 的剂量" },
+
+  "logout": { "title": "退出登录？", "body": "你需要重新登录。" },
+
+  "take": {
+    "title": { "short": "确认", "full": "确认剂量" },
+    "missing": { "info": "缺少药物信息" },
+    "prompt": "是否已服用该剂量？点按以确认下一次。",
+    "btn": "标记为已服用"
+  },
+
   "validate": { "name": "请输入药物名称", "dosage": "请输入剂量", "time": "请选择时间" },
-  "menu": { "export": { "pdf": "导出 PDF", "csv": "导出 CSV" }, "theme": "主题", "lang": "语言", "logout": "退出" },
+
+  "menu": {
+    "export": { "pdf": "导出 PDF", "csv": "导出 CSV" },
+    "theme": "主题",
+    "lang": "语言",
+    "logout": "退出",
+    "notes": "笔记",
+    "stats": "统计",
+    "more": "更多"
+  },
+
+  "lang": { "select": "选择语言" },
+  "fab": { "add": "添加" },
+
   "detail": { "title": "药物详情", "times": "服用时间", "section": { "status": "今日状态" } },
-  "notes": { "title": "备注", "hint": "为此药物写备注…", "save": "保存备注", "saved": "备注已保存", "appbar": "健康备注", "empty": "暂无备注", "add": "添加备注", "delete": { "title": "确认删除", "body": "删除此备注？" }, "deleted": "备注已删除" },
-  "stats": { "title": "依从性统计", "last7": "最近 7 天依从性", "viewHistory": "查看历史", "noDataDay": "该日无数据", "detailsFor": "详情：", "dosesTaken": "已服用剂量", "dosesMissed": "漏服剂量", "rate": "依从率", "total": "总计", "taken": "已服用", "average": "平均", "axis0": "0%", "axis50": "50%", "axis100": "100%", "locale": "语言：{tag}" }
+
+  "notes": {
+    "title": "笔记",
+    "hint": "为该药物写笔记…",
+    "save": "保存笔记",
+    "saved": "笔记已保存",
+    "appbar": "健康笔记",
+    "empty": "暂无笔记",
+    "add": "添加笔记",
+    "delete": { "title": "确认删除", "body": "删除该笔记？" },
+    "deleted": "笔记已删除",
+    "editor": {
+      "title": { "new": "添加新笔记", "edit": "编辑笔记" },
+      "date": "笔记日期",
+      "content": { "label": "笔记内容", "hint": "你今天感觉如何？", "required": "请输入内容" }
+    }
+  },
+
+  "stats": {
+    "title": "依从性统计",
+    "last7": "近 7 天依从性",
+    "viewHistory": "查看历史",
+    "noDataDay": "该日无数据",
+    "detailsFor": "详情：",
+    "dosesTaken": "已服用剂量",
+    "dosesMissed": "漏服剂量",
+    "rate": "依从率",
+    "total": "合计",
+    "taken": "已服用",
+    "average": "平均",
+    "axis0": "0%",
+    "axis50": "50%",
+    "axis100": "100%",
+    "locale": "语言：{tag}"
+  }
 }

@@ -2,28 +2,96 @@
   "app": { "name": "用藥提醒" },
   "home": { "title": "我的藥物" },
   "search": { "hint": "搜尋藥物…" },
-  "filter": { "all": "全部", "pending": "未服用", "missed": "漏服", "done": "已服用" },
-  "empty": { "title": "尚未有藥物", "hint": "點擊 + 新增第一個藥物", "search": "找不到結果" },
+  "filter": { "all": "全部", "pending": "待服用", "missed": "漏服", "done": "已服用" },
+  "empty": { "title": "尚無藥物", "hint": "點擊 + 新增第一筆藥物", "search": "找不到結果" },
+
   "add": { "title": { "new": "新增藥物", "edit": "編輯藥物" } },
-  "field": { "name": "藥物名稱", "dosage": "劑量", "frequency": "頻率", "type": "藥物種類", "times": "服用時間" },
+  "field": { "name": "藥物名稱", "dosage": "劑量", "frequency": "頻率", "type": "藥物類型", "times": "服用時間" },
   "hint": { "dosage": "例如：500mg" },
   "time": { "n": "時間 #{n}" },
   "freq": { "once": "每日一次", "twice": "每日兩次", "thrice": "每日三次" },
-  "type": { "pill": "錠劑", "capsule": "膠囊", "syrup": "糖漿", "topical": "外用藥", "eyedrop": "眼藥水", "spray": "噴霧", "injection": "注射" },
+  "type": { "pill": "錠劑", "capsule": "膠囊", "syrup": "糖漿", "topical": "外用", "eyedrop": "眼藥水", "spray": "噴劑", "injection": "注射" },
+
   "btn": { "save": "儲存", "update": "更新" },
   "action": { "open": "開啟", "edit": "編輯", "delete": "刪除", "cancel": "取消" },
+
   "toast": { "added": "新增成功", "updated": "已更新", "deleted": "已刪除", "deleted.medicine": "已刪除藥物" },
+
   "confirm": { "delete": { "title": "刪除", "body": "刪除「{name}」？" } },
-  "error": { "generic": "錯誤", "loading": "載入失敗", "delete": "刪除失敗：", "export": { "csv": "匯出 CSV 失敗：", "pdf": "匯出 PDF 失敗：" }, "missing": { "medicine": "藥物不存在。" } },
+
+  "error": {
+    "generic": "錯誤",
+    "loading": "載入失敗",
+    "delete": "刪除失敗：",
+    "export": { "csv": "匯出 CSV 失敗：", "pdf": "匯出 PDF 失敗：" },
+    "missing": { "medicine": "此藥物已不存在。" }
+  },
+
   "table": { "name": "名稱", "dosage": "劑量", "frequency": "頻率" },
-  "export": { "none": "沒有可匯出的資料", "saved": { "csv": "已儲存 CSV：", "pdf": "已儲存 PDF：" } },
+
+  "export": { "none": "無可匯出資料", "saved": { "csv": "已儲存 CSV：", "pdf": "已儲存 PDF：" } },
   "pdf": { "title": "藥物清單", "exported.on": "匯出時間", "page": "頁" },
-  "dose": { "n": "第{n}次", "all": { "taken": "今天所有劑量皆已服用！" }, "confirmed": "已確認 {name} 的劑量" },
-  "logout": { "title": "要登出嗎？", "body": "之後需要重新登入。" },
-  "take": { "title": { "short": "確認", "full": "確認劑量" }, "missing": { "info": "缺少藥物資訊" }, "prompt": "是否已服用此劑量？點擊確認下一次。", "btn": "標記為已服用" },
+
+  "dose": { "n": "第 #{n} 次", "all": { "taken": "今日所有劑量皆已服用！" }, "confirmed": "已確認 {name} 的劑量" },
+
+  "logout": { "title": "要登出嗎？", "body": "您需要重新登入。" },
+
+  "take": {
+    "title": { "short": "確認", "full": "確認劑量" },
+    "missing": { "info": "缺少藥物資訊" },
+    "prompt": "是否已服用此劑量？點擊以確認下一次。",
+    "btn": "標記為已服用"
+  },
+
   "validate": { "name": "請輸入藥物名稱", "dosage": "請輸入劑量", "time": "請選擇時間" },
-  "menu": { "export": { "pdf": "匯出 PDF", "csv": "匯出 CSV" }, "theme": "主題", "lang": "語言", "logout": "登出" },
+
+  "menu": {
+    "export": { "pdf": "匯出 PDF", "csv": "匯出 CSV" },
+    "theme": "主題",
+    "lang": "語言",
+    "logout": "登出",
+    "notes": "筆記",
+    "stats": "統計",
+    "more": "更多"
+  },
+
+  "lang": { "select": "選擇語言" },
+  "fab": { "add": "新增" },
+
   "detail": { "title": "藥物詳情", "times": "服用時間", "section": { "status": "今日狀態" } },
-  "notes": { "title": "備註", "hint": "為此藥物撰寫備註…", "save": "儲存備註", "saved": "已儲存備註", "appbar": "健康備註", "empty": "尚無備註", "add": "新增備註", "delete": { "title": "確認刪除", "body": "刪除此備註？" }, "deleted": "備註已刪除" },
-  "stats": { "title": "服藥依從性統計", "last7": "最近 7 日依從性", "viewHistory": "檢視歷史", "noDataDay": "此日沒有資料", "detailsFor": "詳情：", "dosesTaken": "已服用劑量", "dosesMissed": "漏服劑量", "rate": "依從率", "total": "總計", "taken": "已服用", "average": "平均", "axis0": "0%", "axis50": "50%", "axis100": "100%", "locale": "語言：{tag}" }
+
+  "notes": {
+    "title": "筆記",
+    "hint": "為此藥物撰寫筆記…",
+    "save": "儲存筆記",
+    "saved": "已儲存筆記",
+    "appbar": "健康筆記",
+    "empty": "尚無筆記",
+    "add": "新增筆記",
+    "delete": { "title": "確認刪除", "body": "刪除此筆記？" },
+    "deleted": "筆記已刪除",
+    "editor": {
+      "title": { "new": "新增新筆記", "edit": "編輯筆記" },
+      "date": "筆記日期",
+      "content": { "label": "筆記內容", "hint": "你今天感覺如何？", "required": "請輸入內容" }
+    }
+  },
+
+  "stats": {
+    "title": "服藥遵從統計",
+    "last7": "近 7 日遵從率",
+    "viewHistory": "查看歷史",
+    "noDataDay": "該日無資料",
+    "detailsFor": "詳細：",
+    "dosesTaken": "已服用劑量",
+    "dosesMissed": "漏服劑量",
+    "rate": "遵從率",
+    "total": "合計",
+    "taken": "已服用",
+    "average": "平均",
+    "axis0": "0%",
+    "axis50": "50%",
+    "axis100": "100%",
+    "locale": "語言：{tag}"
+  }
 }

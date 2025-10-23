@@ -1,29 +1,97 @@
 {
   "app": { "name": "Rappel de Médicaments" },
-  "home": { "title": "Mes médicaments" },
-  "search": { "hint": "Rechercher des médicaments..." },
-  "filter": { "all": "Tous", "pending": "À prendre", "missed": "Oubliés", "done": "Pris" },
+  "home": { "title": "Mes Médicaments" },
+  "search": { "hint": "Rechercher un médicament..." },
+  "filter": { "all": "Tous", "pending": "À prendre", "missed": "Manqué", "done": "Pris" },
   "empty": { "title": "Aucun médicament", "hint": "Touchez + pour ajouter votre premier médicament", "search": "Aucun résultat" },
+
   "add": { "title": { "new": "Ajouter un médicament", "edit": "Modifier le médicament" } },
   "field": { "name": "Nom du médicament", "dosage": "Dosage", "frequency": "Fréquence", "type": "Type de médicament", "times": "Heures de prise" },
-  "hint": { "dosage": "ex. 500 mg" },
+  "hint": { "dosage": "ex. 500mg" },
   "time": { "n": "Heure #{n}" },
   "freq": { "once": "Une fois par jour", "twice": "Deux fois par jour", "thrice": "Trois fois par jour" },
-  "type": { "pill": "Comprimé", "capsule": "Capsule", "syrup": "Sirop", "topical": "Topique", "eyedrop": "Collyre", "spray": "Spray", "injection": "Injection" },
+  "type": { "pill": "Comprimé", "capsule": "Capsule", "syrup": "Sirop", "topical": "Topique", "eyedrop": "Gouttes ophtalmiques", "spray": "Spray", "injection": "Injection" },
+
   "btn": { "save": "Enregistrer", "update": "Mettre à jour" },
   "action": { "open": "Ouvrir", "edit": "Modifier", "delete": "Supprimer", "cancel": "Annuler" },
+
   "toast": { "added": "Ajouté avec succès", "updated": "Mis à jour", "deleted": "Supprimé", "deleted.medicine": "Médicament supprimé" },
+
   "confirm": { "delete": { "title": "Supprimer", "body": "Supprimer « {name} » ?" } },
-  "error": { "generic": "Erreur", "loading": "Échec du chargement", "delete": "Échec de la suppression : ", "export": { "csv": "Échec d’export CSV : ", "pdf": "Échec d’export PDF : " }, "missing": { "medicine": "Le médicament n’existe plus." } },
+
+  "error": {
+    "generic": "Erreur",
+    "loading": "Échec du chargement",
+    "delete": "Échec de la suppression : ",
+    "export": { "csv": "Échec d’export CSV : ", "pdf": "Échec d’export PDF : " },
+    "missing": { "medicine": "Le médicament n’existe plus." }
+  },
+
   "table": { "name": "Nom", "dosage": "Dosage", "frequency": "Fréquence" },
+
   "export": { "none": "Aucune donnée à exporter", "saved": { "csv": "CSV enregistré : ", "pdf": "PDF enregistré : " } },
   "pdf": { "title": "Liste des médicaments", "exported.on": "Exporté le", "page": "Page" },
-  "dose": { "n": "Prise #{n}", "all": { "taken": "Toutes les prises du jour sont faites !" }, "confirmed": "Prise confirmée pour {name}" },
+
+  "dose": { "n": "Dose #{n}", "all": { "taken": "Toutes les doses du jour ont été prises !" }, "confirmed": "Dose confirmée pour {name}" },
+
   "logout": { "title": "Se déconnecter ?", "body": "Vous devrez vous reconnecter." },
-  "take": { "title": { "short": "Confirmer", "full": "Confirmer la prise" }, "missing": { "info": "Informations manquantes" }, "prompt": "Avez-vous pris cette dose ? Appuyez pour confirmer la prochaine dose.", "btn": "Marquer comme prise" },
-  "validate": { "name": "Entrez le nom du médicament", "dosage": "Entrez le dosage", "time": "Sélectionnez une heure" },
-  "menu": { "export": { "pdf": "Exporter PDF", "csv": "Exporter CSV" }, "theme": "Thème", "lang": "Langue", "logout": "Déconnexion" },
+
+  "take": {
+    "title": { "short": "Confirmer", "full": "Confirmer la dose" },
+    "missing": { "info": "Informations du médicament manquantes" },
+    "prompt": "Avez-vous pris cette dose ? Appuyez pour confirmer la suivante.",
+    "btn": "Marquer comme prise"
+  },
+
+  "validate": { "name": "Veuillez saisir le nom du médicament", "dosage": "Veuillez saisir le dosage", "time": "Veuillez choisir une heure" },
+
+  "menu": {
+    "export": { "pdf": "Exporter en PDF", "csv": "Exporter en CSV" },
+    "theme": "Thème",
+    "lang": "Langue",
+    "logout": "Se déconnecter",
+    "notes": "Notes",
+    "stats": "Statistiques",
+    "more": "Plus"
+  },
+
+  "lang": { "select": "Choisir la langue" },
+  "fab": { "add": "Ajouter" },
+
   "detail": { "title": "Détails du médicament", "times": "Heures de prise", "section": { "status": "Statut du jour" } },
-  "notes": { "title": "Notes", "hint": "Écrire des notes pour ce médicament…", "save": "Enregistrer la note", "saved": "Note enregistrée", "appbar": "Notes de santé", "empty": "Aucune note", "add": "Ajouter une note", "delete": { "title": "Confirmer la suppression", "body": "Supprimer cette note ?" }, "deleted": "Note supprimée" },
-  "stats": { "title": "Statistiques d’observance", "last7": "Observance sur les 7 derniers jours", "viewHistory": "Voir l’historique", "noDataDay": "Aucune donnée pour ce jour", "detailsFor": "Détails : ", "dosesTaken": "Prises effectuées", "dosesMissed": "Prises manquées", "rate": "Taux d’observance", "total": "Total", "taken": "Pris", "average": "Moyenne", "axis0": "0%", "axis50": "50%", "axis100": "100%", "locale": "Langue : {tag}" }
+
+  "notes": {
+    "title": "Notes",
+    "hint": "Écrire une note pour ce médicament…",
+    "save": "Enregistrer la note",
+    "saved": "Note enregistrée",
+    "appbar": "Notes de santé",
+    "empty": "Aucune note",
+    "add": "Ajouter une note",
+    "delete": { "title": "Confirmer la suppression", "body": "Supprimer cette note ?" },
+    "deleted": "Note supprimée",
+    "editor": {
+      "title": { "new": "Ajouter une nouvelle note", "edit": "Modifier la note" },
+      "date": "Date de la note",
+      "content": { "label": "Contenu de la note", "hint": "Comment vous sentez-vous aujourd’hui ?", "required": "Veuillez saisir le contenu" }
+    }
+  },
+
+  "stats": {
+    "title": "Statistiques d’observance",
+    "last7": "Observance sur les 7 derniers jours",
+    "viewHistory": "Voir l’historique",
+    "noDataDay": "Aucune donnée pour ce jour",
+    "detailsFor": "Détails pour ",
+    "dosesTaken": "Doses prises",
+    "dosesMissed": "Doses manquées",
+    "rate": "Taux d’observance",
+    "total": "Total",
+    "taken": "Pris",
+    "average": "Moyenne",
+    "axis0": "0%",
+    "axis50": "50%",
+    "axis100": "100%",
+    "locale": "Langue : {tag}"
+  }
 }

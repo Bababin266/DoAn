@@ -1,29 +1,97 @@
 {
   "app": { "name": "Medikamenten-Erinnerung" },
   "home": { "title": "Meine Medikamente" },
-  "search": { "hint": "Medikamente suchen..." },
-  "filter": { "all": "Alle", "pending": "Ausstehend", "missed": "Vergessen", "done": "Eingenommen" },
-  "empty": { "title": "Noch keine Medikamente", "hint": "Tippe auf +, um eines hinzuzufügen", "search": "Keine Ergebnisse" },
-  "add": { "title": { "new": "Neues Medikament", "edit": "Medikament bearbeiten" } },
+  "search": { "hint": "Medikament suchen..." },
+  "filter": { "all": "Alle", "pending": "Ausstehend", "missed": "Verpasst", "done": "Eingenommen" },
+  "empty": { "title": "Noch keine Medikamente", "hint": "Tippe auf +, um dein erstes Medikament hinzuzufügen", "search": "Keine Ergebnisse" },
+
+  "add": { "title": { "new": "Neues Medikament hinzufügen", "edit": "Medikament bearbeiten" } },
   "field": { "name": "Name des Medikaments", "dosage": "Dosierung", "frequency": "Häufigkeit", "type": "Medikamententyp", "times": "Einnahmezeiten" },
-  "hint": { "dosage": "z. B. 500 mg" },
+  "hint": { "dosage": "z. B. 500mg" },
   "time": { "n": "Zeit #{n}" },
   "freq": { "once": "Einmal täglich", "twice": "Zweimal täglich", "thrice": "Dreimal täglich" },
   "type": { "pill": "Tablette", "capsule": "Kapsel", "syrup": "Sirup", "topical": "Topisch", "eyedrop": "Augentropfen", "spray": "Spray", "injection": "Injektion" },
+
   "btn": { "save": "Speichern", "update": "Aktualisieren" },
   "action": { "open": "Öffnen", "edit": "Bearbeiten", "delete": "Löschen", "cancel": "Abbrechen" },
+
   "toast": { "added": "Erfolgreich hinzugefügt", "updated": "Aktualisiert", "deleted": "Gelöscht", "deleted.medicine": "Medikament gelöscht" },
-  "confirm": { "delete": { "title": "Löschen", "body": "\"{name}\" löschen?" } },
-  "error": { "generic": "Fehler", "loading": "Laden fehlgeschlagen", "delete": "Löschen fehlgeschlagen: ", "export": { "csv": "CSV-Export fehlgeschlagen: ", "pdf": "PDF-Export fehlgeschlagen: " }, "missing": { "medicine": "Medikament nicht mehr vorhanden." } },
+
+  "confirm": { "delete": { "title": "Löschen", "body": "„{name}“ löschen?" } },
+
+  "error": {
+    "generic": "Fehler",
+    "loading": "Laden fehlgeschlagen",
+    "delete": "Löschen fehlgeschlagen: ",
+    "export": { "csv": "CSV-Export fehlgeschlagen: ", "pdf": "PDF-Export fehlgeschlagen: " },
+    "missing": { "medicine": "Medikament existiert nicht mehr." }
+  },
+
   "table": { "name": "Name", "dosage": "Dosierung", "frequency": "Häufigkeit" },
+
   "export": { "none": "Keine Daten zum Exportieren", "saved": { "csv": "CSV gespeichert: ", "pdf": "PDF gespeichert: " } },
   "pdf": { "title": "Medikamentenliste", "exported.on": "Exportiert am", "page": "Seite" },
-  "dose": { "n": "Dosis #{n}", "all": { "taken": "Alle Dosen für heute eingenommen!" }, "confirmed": "Dosis für {name} bestätigt" },
+
+  "dose": { "n": "Dosis #{n}", "all": { "taken": "Alle heutigen Dosen wurden eingenommen!" }, "confirmed": "Dosis für {name} bestätigt" },
+
   "logout": { "title": "Abmelden?", "body": "Du musst dich erneut anmelden." },
-  "take": { "title": { "short": "Bestätigen", "full": "Dosis bestätigen" }, "missing": { "info": "Fehlende Informationen" }, "prompt": "Hast du diese Dosis genommen? Tippe, um die nächste zu bestätigen.", "btn": "Als eingenommen markieren" },
+
+  "take": {
+    "title": { "short": "Bestätigen", "full": "Dosis bestätigen" },
+    "missing": { "info": "Medikamenteninformationen fehlen" },
+    "prompt": "Hast du diese Dosis eingenommen? Tippe, um die nächste zu bestätigen.",
+    "btn": "Als eingenommen markieren"
+  },
+
   "validate": { "name": "Bitte Medikamentennamen eingeben", "dosage": "Bitte Dosierung eingeben", "time": "Bitte Zeit auswählen" },
-  "menu": { "export": { "pdf": "PDF exportieren", "csv": "CSV exportieren" }, "theme": "Design", "lang": "Sprache", "logout": "Abmelden" },
+
+  "menu": {
+    "export": { "pdf": "PDF exportieren", "csv": "CSV exportieren" },
+    "theme": "Theme",
+    "lang": "Sprache",
+    "logout": "Abmelden",
+    "notes": "Notizen",
+    "stats": "Statistiken",
+    "more": "Mehr"
+  },
+
+  "lang": { "select": "Sprache wählen" },
+  "fab": { "add": "Hinzufügen" },
+
   "detail": { "title": "Medikamentdetails", "times": "Einnahmezeiten", "section": { "status": "Heutiger Status" } },
-  "notes": { "title": "Notizen", "hint": "Notizen zu diesem Medikament…", "save": "Notiz speichern", "saved": "Notiz gespeichert", "appbar": "Gesundheitsnotizen", "empty": "Keine Notizen", "add": "Notiz hinzufügen", "delete": { "title": "Löschen bestätigen", "body": "Diese Notiz löschen?" }, "deleted": "Notiz gelöscht" },
-  "stats": { "title": "Adhärenz-Statistik", "last7": "Adhärenz der letzten 7 Tage", "viewHistory": "Verlauf anzeigen", "noDataDay": "Keine Daten für diesen Tag", "detailsFor": "Details für: ", "dosesTaken": "Eingenommene Dosen", "dosesMissed": "Vergessene Dosen", "rate": "Adhärenzrate", "total": "Gesamt", "taken": "Eingenommen", "average": "Durchschnitt", "axis0": "0%", "axis50": "50%", "axis100": "100%", "locale": "Sprache: {tag}" }
+
+  "notes": {
+    "title": "Notizen",
+    "hint": "Notiz zu diesem Medikament schreiben…",
+    "save": "Notiz speichern",
+    "saved": "Notiz gespeichert",
+    "appbar": "Gesundheitsnotizen",
+    "empty": "Keine Notizen",
+    "add": "Notiz hinzufügen",
+    "delete": { "title": "Löschen bestätigen", "body": "Diese Notiz löschen?" },
+    "deleted": "Notiz gelöscht",
+    "editor": {
+      "title": { "new": "Neue Notiz hinzufügen", "edit": "Notiz bearbeiten" },
+      "date": "Notizdatum",
+      "content": { "label": "Notizinhalte", "hint": "Wie fühlst du dich heute?", "required": "Bitte Inhalt eingeben" }
+    }
+  },
+
+  "stats": {
+    "title": "Therapietreue-Statistiken",
+    "last7": "Treue der letzten 7 Tage",
+    "viewHistory": "Verlauf anzeigen",
+    "noDataDay": "Keine Daten für diesen Tag",
+    "detailsFor": "Details für ",
+    "dosesTaken": "Eingenommene Dosen",
+    "dosesMissed": "Verpasste Dosen",
+    "rate": "Treuerate",
+    "total": "Gesamt",
+    "taken": "Eingenommen",
+    "average": "Durchschnitt",
+    "axis0": "0%",
+    "axis50": "50%",
+    "axis100": "100%",
+    "locale": "Sprache: {tag}"
+  }
 }

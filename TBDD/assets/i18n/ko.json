@@ -22,9 +22,54 @@
   "logout": { "title": "로그아웃하시겠습니까?", "body": "다시 로그인해야 합니다." },
   "take": { "title": { "short": "확인", "full": "복용 확인" }, "missing": { "info": "약 정보가 없습니다" }, "prompt": "이 약을 복용하셨나요? 다음 복용을 확인하려면 누르세요.", "btn": "복용 완료로 표시" },
   "validate": { "name": "약 이름을 입력하세요", "dosage": "용량을 입력하세요", "time": "시간을 선택하세요" },
-  "menu": { "export": { "pdf": "PDF 내보내기", "csv": "CSV 내보내기" }, "theme": "테마", "lang": "언어", "logout": "로그아웃" },
+
+  "menu": {
+    "export": { "pdf": "PDF 내보내기", "csv": "CSV 내보내기" },
+    "theme": "테마",
+    "lang": "언어",
+    "logout": "로그아웃",
+    "notes": "메모",
+    "stats": "통계",
+    "more": "더보기"
+  },
 
   "detail": { "title": "약 상세 정보", "times": "복용 시간", "section": { "status": "오늘의 상태" } },
-  "notes": { "title": "메모", "hint": "이 약에 대한 메모를 입력하세요...", "save": "메모 저장", "saved": "메모가 저장되었습니다", "appbar": "건강 메모", "empty": "메모가 없습니다", "add": "메모 추가", "delete": { "title": "삭제 확인", "body": "이 메모를 삭제하시겠습니까?" }, "deleted": "메모가 삭제되었습니다" },
-  "stats": { "title": "복약 순응도 통계", "last7": "최근 7일간 복약 순응도", "viewHistory": "전체 기록 보기", "noDataDay": "이 날짜의 데이터가 없습니다", "detailsFor": "세부 정보: ", "dosesTaken": "복용한 횟수", "dosesMissed": "복용 누락", "rate": "순응도", "total": "총 횟수", "taken": "복용", "average": "평균", "axis0": "0%", "axis50": "50%", "axis100": "100%", "locale": "로케일: {tag}" }
+
+  "notes": {
+    "title": "메모",
+    "hint": "이 약에 대한 메모를 입력하세요...",
+    "save": "메모 저장",
+    "saved": "메모가 저장되었습니다",
+    "appbar": "건강 메모",
+    "empty": "메모가 없습니다",
+    "add": "메모 추가",
+    "delete": { "title": "삭제 확인", "body": "이 메모를 삭제하시겠습니까?" },
+    "deleted": "메모가 삭제되었습니다",
+    "editor": {
+      "title": { "new": "새 메모 추가", "edit": "메모 편집" },
+      "date": "메모 날짜",
+      "content": { "label": "메모 내용", "hint": "오늘 기분은 어떠신가요?", "required": "내용을 입력하세요" }
+    }
+  },
+
+  "stats": {
+    "title": "복약 순응도 통계",
+    "last7": "최근 7일간 복약 순응도",
+    "viewHistory": "전체 기록 보기",
+    "noDataDay": "이 날짜의 데이터가 없습니다",
+    "detailsFor": "세부 정보: ",
+    "dosesTaken": "복용한 횟수",
+    "dosesMissed": "복용 누락",
+    "rate": "순응도",
+    "total": "총 횟수",
+    "taken": "복용",
+    "average": "평균",
+    "axis0": "0%",
+    "axis50": "50%",
+    "axis100": "100%",
+    "locale": "로케일: {tag}"
+  },
+
+  "lang": { "select": "언어 선택" },
+  "fab": { "add": "추가" }
 }

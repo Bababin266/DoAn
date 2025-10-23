@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+
 import '../models/note.dart';
 import '../services/note_service.dart';
-import '../services/language_service.dart'; // 👈 BƯỚC 1: THÊM IMPORT
+import '../services/language_service.dart';
 
 class AddEditNoteScreen extends StatefulWidget {
-  final Note? note; // Nếu note != null -> đang sửa, ngược lại -> đang thêm mới
+  final Note? note; // note != null => edit, else => add
 
   const AddEditNoteScreen({super.key, this.note});
 
@@ -21,38 +22,36 @@ class _AddEditNoteScreenState extends State<AddEditNoteScreen> {
   late DateTime _selectedDate;
   bool _isLoading = false;
 
-  // 👈 BƯỚC 2: THÊM HÀM t()
-  String t(String vi, String en) =>
-      LanguageService.instance.isVietnamese.value ? vi : en;
-
   @override
   void initState() {
     super.initState();
     if (widget.note != null) {
-      // Chế độ sửa
+      // edit mode
       _contentController.text = widget.note!.content;
       _selectedDate = widget.note!.date.toDate();
     } else {
-      // Chế độ thêm mới
+      // add mode
       _selectedDate = DateTime.now();
     }
   }
 
+  @override
+  void dispose() {
+    _contentController.dispose();
+    super.dispose();
+  }
+
   Future<void> _pickDate() async {
+    final isVi = LanguageService.instance.isVietnamese.value;
     final pickedDate = await showDatePicker(
       context: context,
       initialDate: _selectedDate,
       firstDate: DateTime(2020),
       lastDate: DateTime(2100),
-      // 👈 BƯỚC 4: THÊM LOCALE CHO DATE PICKER
-      locale: LanguageService.instance.isVietnamese.value
-          ? const Locale('vi', 'VN')
-          : const Locale('en', 'US'),
+      locale: isVi ? const Locale('vi', 'VN') : const Locale('en', 'US'),
     );
     if (pickedDate != null && pickedDate != _selectedDate) {
-      setState(() {
-        _selectedDate = pickedDate;
-      });
+      setState(() => _selectedDate = pickedDate);
     }
   }
 
@@ -60,55 +59,54 @@ class _AddEditNoteScreenState extends State<AddEditNoteScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
-
     try {
       final content = _contentController.text.trim();
       if (widget.note == null) {
-        // Thêm mới
         await _noteService.addNote(content, _selectedDate);
       } else {
-        // Cập nhật
         await _noteService.updateNote(widget.note!.id!, content, _selectedDate);
       }
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(t('Lưu ghi chú thành công', 'Note saved successfully'))),
-        );
-        Navigator.of(context).pop();
-      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(LanguageService.instance.tr('notes.saved'))),
+      );
+      Navigator.of(context).pop();
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${t('Lỗi', 'Error')}: $e'),
-            backgroundColor: Colors.red,
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '${LanguageService.instance.tr('error.generic')}: $e',
           ),
-        );
-      }
+          backgroundColor: Colors.red,
+        ),
+      );
     } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // 👈 BƯỚC 3: SỬ DỤNG VALUELISTENABLEBUILDER
-    return ValueListenableBuilder<bool>(
-      valueListenable: LanguageService.instance.isVietnamese,
-      builder: (context, isVietnamese, _) {
+    final L = LanguageService.instance;
+
+    // Rebuild khi đổi ngôn ngữ
+    return ValueListenableBuilder<String>(
+      valueListenable: L.langCode,
+      builder: (context, _, __) {
+        final isVi = L.isVietnamese.value;
+        final dateLocale = isVi ? 'vi_VN' : 'en_US';
+
         return Scaffold(
           appBar: AppBar(
-            // 👈 BƯỚC 4: CẬP NHẬT UI VỚI HÀM t()
             title: Text(widget.note == null
-                ? t('Thêm ghi chú mới', 'Add New Note')
-                : t('Chỉnh sửa ghi chú', 'Edit Note')),
+                ? L.tr('notes.editor.title.new')
+                : L.tr('notes.editor.title.edit')),
             actions: [
               IconButton(
                 icon: const Icon(Icons.save),
-                tooltip: t('Lưu', 'Save'),
+                tooltip: L.tr('btn.save'),
                 onPressed: _isLoading ? null : _saveNote,
               ),
             ],
@@ -122,31 +120,31 @@ class _AddEditNoteScreenState extends State<AddEditNoteScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Chọn ngày
+                  // Date picker
                   ListTile(
                     leading: const Icon(Icons.calendar_today),
-                    title: Text(t('Ngày ghi chú', 'Note Date')),
+                    title: Text(L.tr('notes.editor.date')),
                     subtitle: Text(
-                      DateFormat.yMMMMEEEEd(isVietnamese ? 'vi_VN' : 'en_US')
-                          .format(_selectedDate),
+                      DateFormat.yMMMMEEEEd(dateLocale).format(_selectedDate),
                     ),
                     onTap: _pickDate,
                   ),
                   const Divider(),
                   const SizedBox(height: 16),
-                  // Nội dung
+
+                  // Content
                   TextFormField(
                     controller: _contentController,
                     decoration: InputDecoration(
-                      labelText: t('Nội dung ghi chú', 'Note Content'),
-                      hintText: t('Hôm nay bạn cảm thấy thế nào?', 'How are you feeling today?'),
+                      labelText: L.tr('notes.editor.content.label'),
+                      hintText: L.tr('notes.editor.content.hint'),
                       border: const OutlineInputBorder(),
                       alignLabelWithHint: true,
                     ),
                     maxLines: 10,
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
-                        return t('Vui lòng nhập nội dung', 'Please enter content');
+                        return L.tr('notes.editor.content.required');
                       }
                       return null;
                     },

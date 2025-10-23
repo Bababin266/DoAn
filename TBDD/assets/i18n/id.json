@@ -3,27 +3,95 @@
   "home": { "title": "Obatku" },
   "search": { "hint": "Cari obat..." },
   "filter": { "all": "Semua", "pending": "Belum diminum", "missed": "Terlewat", "done": "Sudah diminum" },
-  "empty": { "title": "Belum ada obat", "hint": "Ketuk + untuk menambahkan", "search": "Tidak ada hasil" },
-  "add": { "title": { "new": "Tambah Obat", "edit": "Edit Obat" } },
-  "field": { "name": "Nama obat", "dosage": "Dosis", "frequency": "Frekuensi", "type": "Jenis obat", "times": "Waktu minum" },
-  "hint": { "dosage": "mis. 500 mg" },
+  "empty": { "title": "Belum ada obat", "hint": "Ketuk + untuk menambahkan obat pertama", "search": "Tidak ada hasil" },
+
+  "add": { "title": { "new": "Tambah Obat Baru", "edit": "Edit Obat" } },
+  "field": { "name": "Nama Obat", "dosage": "Dosis", "frequency": "Frekuensi", "type": "Jenis Obat", "times": "Waktu Minum" },
+  "hint": { "dosage": "mis. 500mg" },
   "time": { "n": "Waktu #{n}" },
-  "freq": { "once": "Sehari sekali", "twice": "Sehari dua kali", "thrice": "Sehari tiga kali" },
+  "freq": { "once": "Sekali sehari", "twice": "Dua kali sehari", "thrice": "Tiga kali sehari" },
   "type": { "pill": "Tablet", "capsule": "Kapsul", "syrup": "Sirup", "topical": "Topikal", "eyedrop": "Tetes mata", "spray": "Semprot", "injection": "Suntikan" },
+
   "btn": { "save": "Simpan", "update": "Perbarui" },
   "action": { "open": "Buka", "edit": "Edit", "delete": "Hapus", "cancel": "Batal" },
+
   "toast": { "added": "Berhasil ditambahkan", "updated": "Diperbarui", "deleted": "Dihapus", "deleted.medicine": "Obat dihapus" },
+
   "confirm": { "delete": { "title": "Hapus", "body": "Hapus \"{name}\"?" } },
-  "error": { "generic": "Kesalahan", "loading": "Gagal memuat", "delete": "Gagal menghapus: ", "export": { "csv": "Gagal ekspor CSV: ", "pdf": "Gagal ekspor PDF: " }, "missing": { "medicine": "Obat tidak lagi tersedia." } },
+
+  "error": {
+    "generic": "Kesalahan",
+    "loading": "Gagal memuat",
+    "delete": "Gagal menghapus: ",
+    "export": { "csv": "Gagal ekspor CSV: ", "pdf": "Gagal ekspor PDF: " },
+    "missing": { "medicine": "Obat tidak ada lagi." }
+  },
+
   "table": { "name": "Nama", "dosage": "Dosis", "frequency": "Frekuensi" },
+
   "export": { "none": "Tidak ada data untuk diekspor", "saved": { "csv": "CSV tersimpan: ", "pdf": "PDF tersimpan: " } },
   "pdf": { "title": "Daftar Obat", "exported.on": "Diekspor pada", "page": "Halaman" },
+
   "dose": { "n": "Dosis #{n}", "all": { "taken": "Semua dosis hari ini sudah diminum!" }, "confirmed": "Dosis untuk {name} dikonfirmasi" },
-  "logout": { "title": "Keluar?", "body": "Anda harus masuk lagi." },
-  "take": { "title": { "short": "Konfirmasi", "full": "Konfirmasi Dosis" }, "missing": { "info": "Informasi kurang" }, "prompt": "Sudah meminum dosis ini? Ketuk untuk konfirmasi dosis berikutnya.", "btn": "Tandai sudah diminum" },
+
+  "logout": { "title": "Keluar?", "body": "Anda harus masuk kembali." },
+
+  "take": {
+    "title": { "short": "Konfirmasi", "full": "Konfirmasi Dosis" },
+    "missing": { "info": "Informasi obat kurang" },
+    "prompt": "Apakah Anda sudah minum dosis ini? Ketuk untuk konfirmasi berikutnya.",
+    "btn": "Tandai sudah diminum"
+  },
+
   "validate": { "name": "Masukkan nama obat", "dosage": "Masukkan dosis", "time": "Pilih waktu" },
-  "menu": { "export": { "pdf": "Ekspor PDF", "csv": "Ekspor CSV" }, "theme": "Tema", "lang": "Bahasa", "logout": "Keluar" },
-  "detail": { "title": "Detail Obat", "times": "Waktu minum", "section": { "status": "Status hari ini" } },
-  "notes": { "title": "Catatan", "hint": "Tulis catatan untuk obat ini…", "save": "Simpan catatan", "saved": "Catatan tersimpan", "appbar": "Catatan Kesehatan", "empty": "Belum ada catatan", "add": "Tambah catatan", "delete": { "title": "Konfirmasi hapus", "body": "Hapus catatan ini?" }, "deleted": "Catatan dihapus" },
-  "stats": { "title": "Statistik Kepatuhan", "last7": "Kepatuhan 7 hari terakhir", "viewHistory": "Lihat riwayat", "noDataDay": "Tidak ada data untuk hari ini", "detailsFor": "Detail untuk: ", "dosesTaken": "Dosis diminum", "dosesMissed": "Dosis terlewat", "rate": "Tingkat kepatuhan", "total": "Total", "taken": "Diminum", "average": "Rata-rata", "axis0": "0%", "axis50": "50%", "axis100": "100%", "locale": "Bahasa: {tag}" }
+
+  "menu": {
+    "export": { "pdf": "Ekspor PDF", "csv": "Ekspor CSV" },
+    "theme": "Tema",
+    "lang": "Bahasa",
+    "logout": "Keluar",
+    "notes": "Catatan",
+    "stats": "Statistik",
+    "more": "Lainnya"
+  },
+
+  "lang": { "select": "Pilih bahasa" },
+  "fab": { "add": "Tambah" },
+
+  "detail": { "title": "Detail Obat", "times": "Waktu Minum", "section": { "status": "Status Hari Ini" } },
+
+  "notes": {
+    "title": "Catatan",
+    "hint": "Tulis catatan untuk obat ini…",
+    "save": "Simpan catatan",
+    "saved": "Catatan tersimpan",
+    "appbar": "Catatan Kesehatan",
+    "empty": "Belum ada catatan",
+    "add": "Tambah catatan",
+    "delete": { "title": "Konfirmasi hapus", "body": "Hapus catatan ini?" },
+    "deleted": "Catatan dihapus",
+    "editor": {
+      "title": { "new": "Tambah catatan baru", "edit": "Edit catatan" },
+      "date": "Tanggal catatan",
+      "content": { "label": "Isi catatan", "hint": "Bagaimana perasaan Anda hari ini?", "required": "Masukkan isi catatan" }
+    }
+  },
+
+  "stats": {
+    "title": "Statistik Kepatuhan",
+    "last7": "Kepatuhan 7 hari terakhir",
+    "viewHistory": "Lihat riwayat",
+    "noDataDay": "Tidak ada data untuk hari ini",
+    "detailsFor": "Detail untuk ",
+    "dosesTaken": "Dosis diminum",
+    "dosesMissed": "Dosis terlewat",
+    "rate": "Tingkat kepatuhan",
+    "total": "Total",
+    "taken": "Diminum",
+    "average": "Rata-rata",
+    "axis0": "0%",
+    "axis50": "50%",
+    "axis100": "100%",
+    "locale": "Bahasa: {tag}"
+  }
 }
