@@ -22,9 +22,49 @@
   "logout": { "title": "Đăng xuất?", "body": "Bạn sẽ cần đăng nhập lại." },
   "take": { "title": { "short": "Xác nhận", "full": "Xác nhận liều" }, "missing": { "info": "Thiếu thông tin thuốc" }, "prompt": "Bạn đã uống liều này chưa? Nhấn để xác nhận liều tiếp theo.", "btn": "Đánh dấu đã uống" },
   "validate": { "name": "Vui lòng nhập tên thuốc", "dosage": "Vui lòng nhập liều lượng", "time": "Vui lòng chọn giờ" },
-  "menu": { "export": { "pdf": "Xuất PDF", "csv": "Xuất CSV" }, "theme": "Giao diện", "lang": "Ngôn ngữ", "logout": "Đăng xuất" },
-
+  "menu": {
+    "export": { "pdf": "Xuất PDF", "csv": "Xuất CSV" },
+    "theme": "Giao diện",
+    "lang": "Ngôn ngữ",
+    "logout": "Đăng xuất",
+    "notes": "Ghi chú",
+    "stats": "Thống kê",
+    "more": "Thêm"
+  },
   "detail": { "title": "Chi tiết thuốc", "times": "Giờ uống", "section": { "status": "Trạng thái hôm nay" } },
-  "notes": { "title": "Ghi chú", "hint": "Nhập ghi chú cho thuốc này...", "save": "Lưu ghi chú", "saved": "Đã lưu ghi chú", "appbar": "Ghi chú sức khỏe", "empty": "Chưa có ghi chú", "add": "Thêm ghi chú", "delete": { "title": "Xác nhận xóa", "body": "Bạn có chắc muốn xóa ghi chú này không?" }, "deleted": "Đã xóa ghi chú" },
-  "stats": { "title": "Thống kê tuân thủ", "last7": "Tuân thủ 7 ngày gần nhất", "viewHistory": "Xem lịch sử chi tiết", "noDataDay": "Không có dữ liệu cho ngày này", "detailsFor": "Chi tiết ngày: ", "dosesTaken": "Liều đã uống", "dosesMissed": "Liều bỏ lỡ", "rate": "Tỷ lệ tuân thủ", "total": "Tổng liều", "taken": "Đã uống", "average": "Trung bình", "axis0": "0%", "axis50": "50%", "axis100": "100%", "locale": "Ngôn ngữ: {tag}" }
+  "notes": {
+    "title": "Ghi chú",
+    "hint": "Nhập ghi chú cho thuốc này...",
+    "save": "Lưu ghi chú",
+    "saved": "Đã lưu ghi chú",
+    "appbar": "Ghi chú sức khỏe",
+    "empty": "Chưa có ghi chú",
+    "add": "Thêm ghi chú",
+    "delete": { "title": "Xác nhận xóa", "body": "Bạn có chắc muốn xóa ghi chú này không?" },
+    "deleted": "Đã xóa ghi chú",
+    "editor": {
+      "title": { "new": "Thêm ghi chú mới", "edit": "Chỉnh sửa ghi chú" },
+      "date": "Ngày ghi chú",
+      "content": { "label": "Nội dung ghi chú", "hint": "Hôm nay bạn cảm thấy thế nào?", "required": "Vui lòng nhập nội dung" }
+    }
+  },
+  "stats": {
+    "title": "Thống kê tuân thủ",
+    "last7": "Tuân thủ 7 ngày gần nhất",
+    "viewHistory": "Xem lịch sử chi tiết",
+    "noDataDay": "Không có dữ liệu cho ngày này",
+    "detailsFor": "Chi tiết ngày: ",
+    "dosesTaken": "Liều đã uống",
+    "dosesMissed": "Liều bỏ lỡ",
+    "rate": "Tỷ lệ tuân thủ",
+    "total": "Tổng liều",
+    "taken": "Đã uống",
+    "average": "Trung bình",
+    "axis0": "0%",
+    "axis50": "50%",
+    "axis100": "100%",
+    "locale": "Ngôn ngữ: {tag}"
+  },
+  "lang": { "select": "Chọn ngôn ngữ" },
+  "fab": { "add": "Thêm" }
 }

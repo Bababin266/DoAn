@@ -147,7 +147,7 @@ class LanguageService {
       'ru': 'Русский',          // Russian
       'hi': 'हिन्दी',           // Hindi
       'th': 'ภาษาไทย',          // Thai
-      'ar': 'العربية',           // Arabic
+
     };
     return names[code] ?? code;
   }
@@ -169,7 +169,7 @@ class LanguageService {
       'ru': '🇷🇺',  // Russian
       'hi': '🇮🇳',  // Hindi
       'th': '🇹🇭',  // Thai
-      'ar': '🇸🇦',  // Arabic (bạn có thể đổi sang 🇪🇬 hoặc 🇦🇪 nếu muốn)
+
     };
     return flags[code] ?? '🌐';
   }

@@ -22,9 +22,49 @@
   "logout": { "title": "Sign out?", "body": "You will need to log in again." },
   "take": { "title": { "short": "Confirm", "full": "Confirm Dose" }, "missing": { "info": "Missing medicine information" }, "prompt": "Have you taken this dose? Press to confirm the next dose.", "btn": "Mark as Taken" },
   "validate": { "name": "Please enter medicine name", "dosage": "Please enter dosage", "time": "Please select a time" },
-  "menu": { "export": { "pdf": "Export PDF", "csv": "Export CSV" }, "theme": "Theme", "lang": "Language", "logout": "Log out" },
-
+  "menu": {
+    "export": { "pdf": "Export PDF", "csv": "Export CSV" },
+    "theme": "Theme",
+    "lang": "Language",
+    "logout": "Log out",
+    "notes": "Notes",
+    "stats": "Statistics",
+    "more": "More"
+  },
   "detail": { "title": "Medicine Details", "times": "Dosage Times", "section": { "status": "Today's Status" } },
-  "notes": { "title": "Notes", "hint": "Write notes for this medicine…", "save": "Save Notes", "saved": "Notes saved", "appbar": "Health Notes", "empty": "No notes yet", "add": "Add Note", "delete": { "title": "Confirm Deletion", "body": "Are you sure you want to delete this note?" }, "deleted": "Note deleted" },
-  "stats": { "title": "Compliance Statistics", "last7": "Compliance Over Last 7 Days", "viewHistory": "View Full History", "noDataDay": "No data for this day", "detailsFor": "Details for ", "dosesTaken": "Doses Taken", "dosesMissed": "Doses Missed", "rate": "Compliance Rate", "total": "Total Doses", "taken": "Taken", "average": "Average", "axis0": "0%", "axis50": "50%", "axis100": "100%", "locale": "Locale: {tag}" }
+  "notes": {
+    "title": "Notes",
+    "hint": "Write notes for this medicine…",
+    "save": "Save Notes",
+    "saved": "Notes saved",
+    "appbar": "Health Notes",
+    "empty": "No notes yet",
+    "add": "Add Note",
+    "delete": { "title": "Confirm Deletion", "body": "Are you sure you want to delete this note?" },
+    "deleted": "Note deleted",
+    "editor": {
+      "title": { "new": "Add New Note", "edit": "Edit Note" },
+      "date": "Note Date",
+      "content": { "label": "Note Content", "hint": "How are you feeling today?", "required": "Please enter content" }
+    }
+  },
+  "stats": {
+    "title": "Compliance Statistics",
+    "last7": "Compliance Over Last 7 Days",
+    "viewHistory": "View Full History",
+    "noDataDay": "No data for this day",
+    "detailsFor": "Details for ",
+    "dosesTaken": "Doses Taken",
+    "dosesMissed": "Doses Missed",
+    "rate": "Compliance Rate",
+    "total": "Total Doses",
+    "taken": "Taken",
+    "average": "Average",
+    "axis0": "0%",
+    "axis50": "50%",
+    "axis100": "100%",
+    "locale": "Locale: {tag}"
+  },
+  "lang": { "select": "Select language" },
+  "fab": { "add": "Add" }
 }
